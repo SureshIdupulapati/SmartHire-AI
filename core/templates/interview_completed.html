@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}AI HirePanel - Interview Submitted{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; flex-grow: 1;">
+    {% if session.tab_focus_violations > 3 or session.copy_paste_violations > 5 %}
+    <!-- Disqualified Card -->
+    <div class="card" style="max-width: 600px; width: 100%; text-align: center; padding: 16px 18px; border: 1px solid rgba(239, 68, 68, 0.3); position: relative; overflow: hidden; background: rgba(20, 30, 55, 0.65);">
+        <div style="position: absolute; top: -10%; left: 50%; transform: translateX(-50%); width: 250px; height: 250px; background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 70%); pointer-events: none; z-index: 1;"></div>
+        
+        <div style="position: relative; z-index: 2;">
+            <div class="checkmark-wrapper" style="margin: 0 auto 28px; width: 84px; height: 84px; border-radius: 50%; background: rgba(239, 68, 68, 0.08); border: 2px solid #ef4444; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(239, 68, 68, 0.25);">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px rgba(248, 113, 113, 0.5));">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </div>
+
+            <h1 style="font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 30px; margin-bottom: 16px; background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Session Terminated
+            </h1>
+            
+            <p style="color: var(--text-main); font-size: 16px; font-weight: 500; margin-bottom: 24px; line-height: 1.5;">
+                This interview session was terminated automatically by the Proctoring Integrity System.
+            </p>
+            
+            <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 32px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
+                    <span style="color: var(--text-muted);">Candidate:</span>
+                    <strong style="color: var(--text-main);">{{ session.candidate.name }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
+                    <span style="color: var(--text-muted);">Tab Switches:</span>
+                    <strong style="color: var(--color-reject);">{{ session.tab_focus_violations }} / 3 (Max)</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 12px;">
+                    <span style="color: var(--text-muted);">Status:</span>
+                    <span class="badge badge-reject" style="font-size: 11px; padding: 3px 10px;">Security Lockout</span>
+                </div>
+            </div>
+            
+            <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 32px;">
+                Leaving the interview window or copying external code/text violates our security guidelines. This session has been flagged for manual HR auditing.
+            </p>
+            
+            <div>
+                <a href="{% url 'landing' %}" class="btn-secondary" style="text-decoration: none; display: inline-block; padding: 12px 30px; font-size: 14px; border-radius: 30px;">
+                    Return to Portal Home
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Successful Card -->
+    <div class="card" style="max-width: 600px; width: 100%; text-align: center; padding: 16px 18px; border: 1px solid rgba(0, 242, 254, 0.2); position: relative; overflow: hidden; background: rgba(20, 30, 55, 0.6);">
+        <div style="position: absolute; top: -10%; left: 50%; transform: translateX(-50%); width: 250px; height: 250px; background: radial-gradient(circle, rgba(0, 242, 254, 0.15) 0%, transparent 70%); pointer-events: none; z-index: 1;"></div>
+        
+        <div style="position: relative; z-index: 2;">
+            <div class="checkmark-wrapper" style="margin: 0 auto 28px; width: 84px; height: 84px; border-radius: 50%; background: rgba(16, 185, 129, 0.08); border: 2px solid #10b981; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(16, 185, 129, 0.25); animation: float 3s ease-in-out infinite;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.5));">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+
+            <h1 style="font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 32px; margin-bottom: 16px; background: linear-gradient(135deg, #00f2fe 0%, #7f00ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Interview Submitted
+            </h1>
+            
+            <p style="color: var(--text-main); font-size: 16px; font-weight: 500; margin-bottom: 24px; line-height: 1.5;">
+                Thank you for completing your evaluation session.
+            </p>
+            
+            <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 32px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
+                    <span style="color: var(--text-muted);">Candidate:</span>
+                    <strong style="color: var(--text-main);">{{ session.candidate.name }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
+                    <span style="color: var(--text-muted);">Position:</span>
+                    <strong style="color: var(--text-main);">{{ session.job.title }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 12px;">
+                    <span style="color: var(--text-muted);">Status:</span>
+                    <span class="badge badge-hire" style="font-size: 11px; padding: 3px 10px;">Submitted under Review</span>
+                </div>
+            </div>
+            
+            <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 32px;">
+                Our hiring panels are processing your conversation recordings, technical sandbox metrics, and compliance scoreboards. The recruiting team will review the reports and reach out to you with next steps.
+            </p>
+            
+            <div>
+                <a href="{% url 'landing' %}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 14px 36px; font-size: 15px; border-radius: 30px;">
+                    Return to Portal Home
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+    }
+</style>
+{% endblock %}

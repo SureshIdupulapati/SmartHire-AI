@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}AI HirePanel - Candidate Comparison{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px; display: flex; justify-content: flex-end;">
+    <a href="{% url 'dashboard' %}" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" x2="5" y1="12" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Back to Dashboard
+    </a>
+</div>
+
+<div class="card" style="margin-bottom: 30px;">
+    <h1 style="font-family:'Space Grotesk', sans-serif; font-size: 28px; margin-bottom: 8px;">Candidate Comparison Portal</h1>
+    <p style="color:var(--text-muted); margin:0;">Side-by-side comparative analysis of the selected candidate profiles, agent feedback, and session metrics.</p>
+</div>
+
+<!-- Comparison Side-by-Side Columns Grid -->
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; align-items: stretch; margin-bottom: 0;">
+    {% for item in comparisons %}
+        <div class="card" style="display:flex; flex-direction:column; border-top: 5px solid {% if forloop.first %}var(--primary){% else %}var(--secondary){% endif %}; padding:16px 18px; background: rgba(20, 30, 55, 0.55);">
+            
+            <!-- Summary Header -->
+            <div style="text-align:center; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:20px; margin-bottom:20px;">
+                <h2 style="font-family:'Space Grotesk', sans-serif; font-size:24px; margin-bottom:4px; color:var(--text-main);">{{ item.candidate.name }}</h2>
+                <p style="color:var(--text-muted); font-size:13px; margin-bottom:12px;">{{ item.candidate.email }}</p>
+                
+                <div style="display:flex; justify-content:center; gap:16px; align-items:center; margin-top:12px;">
+                    <div>
+                        <span style="font-size:10px; text-transform:uppercase; color:var(--text-muted); display:block;">Overall Score</span>
+                        <strong style="font-size:26px; color:var(--primary);">{{ item.session.final_score }}</strong>
+                    </div>
+                    <div>
+                        <span style="font-size:10px; text-transform:uppercase; color:var(--text-muted); display:block;">Decision</span>
+                        {% if item.session.recommendation == "Strong Hire" %}
+                            <span class="badge badge-strong-hire" style="font-size:11px; padding:4px 8px;">{{ item.session.recommendation }}</span>
+                        {% elif item.session.recommendation == "Hire" %}
+                            <span class="badge badge-hire" style="font-size:11px; padding:4px 8px;">{{ item.session.recommendation }}</span>
+                        {% elif item.session.recommendation == "Hire with Training" %}
+                            <span class="badge badge-training" style="font-size:11px; padding:4px 8px;">{{ item.session.recommendation }}</span>
+                        {% elif item.session.recommendation == "Second Interview" %}
+                            <span class="badge badge-second" style="font-size:11px; padding:4px 8px;">{{ item.session.recommendation }}</span>
+                        {% else %}
+                            <span class="badge badge-reject" style="font-size:11px; padding:4px 8px;">{{ item.session.recommendation }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resume Analysis Row -->
+            <div style="margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <h4 style="font-family:'Space Grotesk', sans-serif; font-size:14px; text-transform:uppercase; color:var(--primary); margin-bottom:8px;">1. Resume Screening</h4>
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+                    <span>Resume Score:</span>
+                    <strong>{{ item.candidate.resume_score }} / 100</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px;">
+                    <span>Years of Experience:</span>
+                    <strong>{{ item.candidate.experience_years }} Years</strong>
+                </div>
+                <p style="font-size:12px; line-height:1.5; color:var(--text-muted); background:rgba(0,0,0,0.15); padding:8px; border-radius:6px; margin:0;">
+                    {{ item.candidate.resume_summary }}
+                </p>
+            </div>
+
+            <!-- Proctoring Security Row -->
+            <div style="margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <h4 style="font-family:'Space Grotesk', sans-serif; font-size:14px; text-transform:uppercase; color:var(--primary); margin-bottom:8px;">2. Proctoring Security</h4>
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+                    <span>Tab focus switch gaps:</span>
+                    <strong style="color:{% if item.session.tab_focus_violations > 0 %}var(--color-training){% else %}var(--color-hire){% endif %};">{{ item.session.tab_focus_violations }}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:13px;">
+                    <span>Paste blocks intercepted:</span>
+                    <strong style="color:{% if item.session.copy_paste_violations > 0 %}var(--color-training){% else %}var(--color-hire){% endif %};">{{ item.session.copy_paste_violations }}</strong>
+                </div>
+            </div>
+
+            <!-- Round Evaluations -->
+            <div style="margin-bottom:20px; display:flex; flex-direction:column; gap:12px; flex-grow:1;">
+                <h4 style="font-family:'Space Grotesk', sans-serif; font-size:14px; text-transform:uppercase; color:var(--primary); margin-bottom:4px;">3. Agent Round Ratings</h4>
+                
+                <!-- HR Round -->
+                <div style="background:rgba(255,255,255,0.02); padding:10px; border-radius:6px;">
+                    <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:4px;">
+                        <span>Sophia Davis (HR Round):</span>
+                        <span style="color:var(--primary);">{{ item.session.hr_score }} / 100</span>
+                    </div>
+                    <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0; max-height:100px; overflow-y:auto; padding-right:4px; white-space:pre-wrap; word-wrap:break-word;">{{ item.session.hr_feedback }}</p>
+                </div>
+
+                <!-- Tech Round -->
+                <div style="background:rgba(255,255,255,0.02); padding:10px; border-radius:6px;">
+                    <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:4px;">
+                        <span>Dr. Ethan Vance (Tech Round):</span>
+                        <span style="color:var(--primary);">{{ item.session.tech_score }} / 100</span>
+                    </div>
+                    <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0; max-height:100px; overflow-y:auto; padding-right:4px; white-space:pre-wrap; word-wrap:break-word;">{{ item.session.tech_feedback }}</p>
+                </div>
+
+                <!-- Behavioral Round -->
+                <div style="background:rgba(255,255,255,0.02); padding:10px; border-radius:6px;">
+                    <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:4px;">
+                        <span>Marcus Carter (Behavioral):</span>
+                        <span style="color:var(--primary);">{{ item.session.behavioral_score }} / 100</span>
+                    </div>
+                    <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0; max-height:100px; overflow-y:auto; padding-right:4px; white-space:pre-wrap; word-wrap:break-word;">{{ item.session.behavioral_feedback }}</p>
+                </div>
+            </div>
+
+            <!-- Code Sandbox Code Review -->
+            {% if item.session.technical_code %}
+            <div style="margin-top:20px; border-top:1px dashed rgba(255,255,255,0.06); padding-top:16px;">
+                <h4 style="font-family:'Space Grotesk', sans-serif; font-size:14px; text-transform:uppercase; color:var(--primary); margin-bottom:8px;">4. Code Submission Review</h4>
+                <div style="background:#0b0f19; border:1px solid var(--border-color); border-radius:6px; padding:10px; font-family:monospace; font-size:11px; height:120px; overflow-y:auto; color:#f1f5f9;">
+                    <pre style="margin:0; white-space:pre;">{{ item.session.technical_code }}</pre>
+                </div>
+            </div>
+            {% endif %}
+            
+            <a href="{% url 'candidate_detail' item.candidate.id %}" class="btn-primary" style="margin-top:24px; text-align:center; text-decoration:none; font-size:13px; padding:10px 0; display:block;">
+                Open Detailed Report
+            </a>
+        </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

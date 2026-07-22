@@ -1,0 +1,420 @@
+{% extends 'base.html' %}
+
+{% block title %}AI HirePanel - Recruiter Dashboard{% endblock %}
+
+{% block content %}
+<!-- Include Chart.js via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+    <div>
+        <h1 style="font-family:'Space Grotesk', sans-serif; font-size:32px;">Recruiter Dashboard</h1>
+        <p style="color:var(--text-muted);">Monitor candidate evaluations, hiring metrics, and multi-agent scores.</p>
+    </div>
+    <div style="display:flex; gap:12px;">
+        <button id="btn-manage-jobs" class="btn-primary" style="display:flex; align-items:center; gap:8px;">
+            💼 Manage Job Roles
+        </button>
+        <button id="compare-btn" class="btn-secondary" style="display:none; align-items:center; gap:8px;">
+            📊 Compare Selected Candidates
+        </button>
+    </div>
+</div>
+
+<!-- Modal for Managing Target Positions / Job Roles -->
+<div id="job-roles-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+    <div class="card" style="width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto; margin: 20px;">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+                <span>Target Positions & Job Roles Management</span>
+            </div>
+            <span id="job-roles-close" style="cursor:pointer; font-size:24px; color:var(--text-muted);">&times;</span>
+        </div>
+
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+            Add or remove active job positions. Changes made here dynamically update the target position dropdown list on the Candidate Onboarding portal.
+        </p>
+
+        <!-- Current Job Roles List -->
+        <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--primary);">Active Open Positions</h3>
+        <div id="job-roles-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+            {% for job in jobs %}
+            <div class="job-role-item" data-id="{{ job.id }}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 8px;">
+                <div>
+                    <strong style="color: var(--text-main); font-size: 15px;">{{ job.title }}</strong>
+                    <span style="font-size: 12px; color: var(--primary); background: rgba(0, 242, 254, 0.1); padding: 2px 8px; border-radius: 999px; margin-left: 8px;">{{ job.department }}</span>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px; margin-bottom: 0;">{{ job.description|truncatewords:12 }}</p>
+                </div>
+                <button class="btn-delete-job btn-secondary" onclick="deleteJobRole({{ job.id }}, '{{ job.title|escapejs }}')" style="color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); padding: 6px 12px; font-size: 13px; cursor: pointer;">
+                    🗑️ Remove
+                </button>
+            </div>
+            {% empty %}
+            <p id="no-jobs-msg" style="color: var(--text-muted); font-size: 14px;">No custom positions added yet.</p>
+            {% endfor %}
+        </div>
+
+        <!-- Add New Job Role Form -->
+        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 18px;">
+            <h3 style="font-size: 16px; margin-bottom: 14px; color: var(--primary);">+ Create New Job Position</h3>
+            <form id="add-job-form" style="display: flex; flex-direction: column; gap: 14px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-group">
+                        <label for="new_job_title">Position Title *</label>
+                        <input type="text" id="new_job_title" class="form-control" placeholder="e.g. AI Research Engineer" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_job_dept">Department</label>
+                        <input type="text" id="new_job_dept" class="form-control" placeholder="e.g. AI Operations">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="new_job_desc">Job Description *</label>
+                    <textarea id="new_job_desc" class="form-control" style="height: 65px;" placeholder="Brief summary of responsibilities and scope..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="new_job_reqs">Required Skills Checklist (Comma Separated) *</label>
+                    <input type="text" id="new_job_reqs" class="form-control" placeholder="e.g. Python, PyTorch, LLMs, Docker, FastAPI" required>
+                </div>
+
+                <button type="submit" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">
+                    + Add Position to Onboarding Dropdown
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Aggregated Metrics Dashboard -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <h3 style="color:var(--text-muted); font-size:14px; text-transform:uppercase;">Total Registered</h3>
+        <div class="metric-value">{{ metrics.total_candidates }}</div>
+    </div>
+    <div class="metric-card">
+        <h3 style="color:var(--text-muted); font-size:14px; text-transform:uppercase;">Completed Sessions</h3>
+        <div class="metric-value">{{ metrics.completed_interviews }}</div>
+    </div>
+    <div class="metric-card">
+        <h3 style="color:var(--text-muted); font-size:14px; text-transform:uppercase;">Average Panel Score</h3>
+        <div class="metric-value">{{ metrics.average_score }} <span style="font-size:18px; color:var(--text-muted);">/ 100</span></div>
+    </div>
+    <div class="metric-card">
+        <h3 style="color:var(--text-muted); font-size:14px; text-transform:uppercase;">Overall Hire Rate</h3>
+        <div class="metric-value">{{ metrics.hire_rate }}%</div>
+    </div>
+</div>
+
+<!-- Feature 3: Visual Analytics Charts Grid -->
+{% if sessions %}
+<div class="grid-2col" style="margin-bottom:30px; gap:20px;">
+    <!-- Chart 1: Evaluation Outcomes Distribution -->
+    <div class="card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px 18px;">
+        <h3 style="font-family:'Space Grotesk', sans-serif; font-size:16px; margin-bottom:16px; color:var(--text-main); align-self:flex-start;">Hiring Recommendations Breakdown</h3>
+        <div style="width:100%; max-width:280px; height:240px; display:flex; justify-content:center; align-items:center;">
+            <canvas id="outcomesChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Chart 2: Average Score by Agent Stage -->
+    <div class="card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px 18px;">
+        <h3 style="font-family:'Space Grotesk', sans-serif; font-size:16px; margin-bottom:16px; color:var(--text-main); align-self:flex-start;">Average Scores by Round Agent</h3>
+        <div style="width:100%; height:240px; display:flex; justify-content:center; align-items:center;">
+            <canvas id="stagesChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Candidates list -->
+<div class="card" style="margin-bottom:0;">
+    <h2 class="card-title">Completed Evaluations</h2>
+    {% if sessions %}
+        <div style="overflow-x:auto;">
+            <table class="dashboard-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align:center;"><input type="checkbox" id="select-all-candidates" style="accent-color:var(--primary);"></th>
+                        <th>Candidate Name</th>
+                        <th>Target Position</th>
+                        <th>Years Exp</th>
+                        <th>Date Processed</th>
+                        <th>Resume Score</th>
+                        <th>Overall Score</th>
+                        <th>Recommendation</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in sessions %}
+                        <tr>
+                            <td style="text-align:center;"><input type="checkbox" class="candidate-checkbox" data-id="{{ session.candidate.id }}" style="accent-color:var(--primary);"></td>
+                            <td style="font-weight:600; color:var(--primary);">{{ session.candidate.name }}</td>
+                            <td>{{ session.job.title }}</td>
+                            <td>{{ session.candidate.experience_years }} Years</td>
+                            <td style="font-size:14px; color:var(--text-muted);">{{ session.created_at|date:"M d, Y" }}</td>
+                            <td>{{ session.candidate.resume_score }}</td>
+                            <td style="font-weight:700;">{{ session.final_score }}</td>
+                            <td>
+                                {% if session.recommendation == "Strong Hire" %}
+                                    <span class="badge badge-strong-hire">{{ session.recommendation }}</span>
+                                {% elif session.recommendation == "Hire" %}
+                                    <span class="badge badge-hire">{{ session.recommendation }}</span>
+                                {% elif session.recommendation == "Hire with Training" %}
+                                    <span class="badge badge-training">{{ session.recommendation }}</span>
+                                {% elif session.recommendation == "Second Interview" %}
+                                    <span class="badge badge-second">{{ session.recommendation }}</span>
+                                {% else %}
+                                    <span class="badge badge-reject">{{ session.recommendation }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'candidate_detail' session.candidate.id %}" class="btn-secondary" style="font-size:13px; padding: 6px 12px; text-decoration:none;">View Report Card</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align:center; padding: 40px 0;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom:16px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" x2="12" y1="8" y2="12"></line>
+                <line x1="12" x2="12.01" y1="16" y2="16"></line>
+            </svg>
+            <p style="color:var(--text-muted);">No evaluations completed yet. Please run an interview session through the Candidate Portal.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ─── Job Roles Modal Logic (Guarded & Safe) ──────────────────
+    const btnManageJobs = document.getElementById('btn-manage-jobs');
+    const jobModal = document.getElementById('job-roles-modal');
+    const btnCloseJobs = document.getElementById('job-roles-close');
+    const addJobForm = document.getElementById('add-job-form');
+
+    if (btnManageJobs && jobModal) {
+        btnManageJobs.onclick = () => {
+            jobModal.style.display = 'flex';
+        };
+    }
+    if (btnCloseJobs && jobModal) {
+        btnCloseJobs.onclick = () => {
+            jobModal.style.display = 'none';
+        };
+    }
+    window.onclick = (e) => {
+        if (jobModal && e.target === jobModal) {
+            jobModal.style.display = 'none';
+        }
+    };
+
+    if (addJobForm) {
+        addJobForm.onsubmit = function(e) {
+            e.preventDefault();
+            const title = document.getElementById('new_job_title').value.trim();
+            const dept = document.getElementById('new_job_dept').value.trim();
+            const desc = document.getElementById('new_job_desc').value.trim();
+            const reqs = document.getElementById('new_job_reqs').value.trim();
+
+            if (!title || !desc || !reqs) return;
+
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('department', dept);
+            formData.append('description', desc);
+            formData.append('requirements', reqs);
+
+            fetch('/api/job-role/add/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const jobList = document.getElementById('job-roles-list');
+                    const noJobsMsg = document.getElementById('no-jobs-msg');
+                    if (noJobsMsg) noJobsMsg.remove();
+
+                    const newJobHtml = `
+                        <div class="job-role-item" data-id="${data.job.id}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 8px;">
+                            <div>
+                                <strong style="color: var(--text-main); font-size: 15px;">${data.job.title}</strong>
+                                <span style="font-size: 12px; color: var(--primary); background: rgba(0, 242, 254, 0.1); padding: 2px 8px; border-radius: 999px; margin-left: 8px;">${data.job.department}</span>
+                                <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px; margin-bottom: 0;">${data.job.description}</p>
+                            </div>
+                            <button class="btn-delete-job btn-secondary" onclick="deleteJobRole(${data.job.id}, '${data.job.title.replace(/'/g, "\\'")}')" style="color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); padding: 6px 12px; font-size: 13px; cursor: pointer;">
+                                🗑️ Remove
+                            </button>
+                        </div>
+                    `;
+                    if (jobList) jobList.insertAdjacentHTML('beforeend', newJobHtml);
+                    addJobForm.reset();
+                    alert(`Job position '${data.job.title}' added successfully!`);
+                } else {
+                    alert(data.message || 'Error creating job role.');
+                }
+            })
+            .catch(err => alert('Failed to create job role: ' + err));
+        };
+    }
+
+    window.deleteJobRole = function(jobId, jobTitle) {
+        if (!confirm(`Are you sure you want to remove '${jobTitle}'? Candidates will no longer be able to select this role.`)) return;
+
+        fetch(`/api/job-role/delete/${jobId}/`, {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const item = document.querySelector(`.job-role-item[data-id="${jobId}"]`);
+                if (item) item.remove();
+            } else {
+                alert(data.message || 'Error deleting job role.');
+            }
+        })
+        .catch(err => alert('Failed to delete job role: ' + err));
+    };
+
+    // Highlight active link in header safely
+    const navLink = document.querySelector('.nav-link-dashboard');
+    if (navLink) navLink.classList.add('active');
+
+    // Checkbox comparison system
+    const compareBtn = document.getElementById('compare-btn');
+    const selectAllCheckbox = document.getElementById('select-all-candidates');
+    const candidateCheckboxes = document.querySelectorAll('.candidate-checkbox');
+
+    function updateCompareButtonVisibility() {
+        if (!compareBtn) return;
+        const checkedCount = document.querySelectorAll('.candidate-checkbox:checked').length;
+        if (checkedCount >= 2) {
+            compareBtn.style.display = 'flex';
+        } else {
+            compareBtn.style.display = 'none';
+        }
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            candidateCheckboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateCompareButtonVisibility();
+        });
+    }
+
+    candidateCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            updateCompareButtonVisibility();
+        });
+    });
+
+    if (compareBtn) {
+        compareBtn.addEventListener('click', () => {
+            const checkedIds = [];
+            document.querySelectorAll('.candidate-checkbox:checked').forEach(cb => {
+                checkedIds.push(cb.getAttribute('data-id'));
+            });
+            if (checkedIds.length >= 2) {
+                window.location.href = `/dashboard/compare/?ids=${checkedIds.join(',')}`;
+            }
+        });
+    }
+
+    {% if sessions %}
+    // Load Recruiter Analytics Charts Safely
+    const outcomesEl = document.getElementById('outcomesChart');
+    if (outcomesEl) {
+        const outcomesCtx = outcomesEl.getContext('2d');
+        new Chart(outcomesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Strong Hire', 'Hire', 'Hire with Training', 'Second Interview', 'Reject'],
+                datasets: [{
+                    data: [
+                        {{ outcomes.strong_hire }},
+                        {{ outcomes.hire }},
+                        {{ outcomes.training }},
+                        {{ outcomes.second }},
+                        {{ outcomes.reject }}
+                    ],
+                    backgroundColor: [
+                        '#10b981',
+                        '#34d399',
+                        '#f59e0b',
+                        '#3b82f6',
+                        '#ef4444'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#94a3b8', font: { family: 'Outfit', size: 11 } }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+
+    const stagesEl = document.getElementById('stagesChart');
+    if (stagesEl) {
+        const stagesCtx = stagesEl.getContext('2d');
+        new Chart(stagesCtx, {
+            type: 'bar',
+            data: {
+                labels: ['HR Round', 'Tech Round', 'Behavioral'],
+                datasets: [{
+                    label: 'Average Score',
+                    data: [
+                        {{ round_averages.hr }},
+                        {{ round_averages.tech }},
+                        {{ round_averages.behavioral }}
+                    ],
+                    backgroundColor: 'rgba(0, 242, 254, 0.4)',
+                    borderColor: '#00f2fe',
+                    borderWidth: 1.5,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', font: { family: 'Outfit' } },
+                        min: 0,
+                        max: 100
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8', font: { family: 'Outfit' } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+    {% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,566 @@
+{% extends 'base.html' %}
+
+{% block title %}AI HirePanel - Candidate Portal & Setup{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Landing page vertical centering wrapper */
+    .landing-home-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        flex-grow: 1;
+        margin: -72px auto 0;
+        padding: 24px 0;
+    }
+    .hero {
+        text-align: center;
+        margin-bottom: 24px;
+        max-width: 860px;
+    }
+    .hero h1 {
+        font-size: 42px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-bottom: 12px;
+    }
+    .hero p {
+        font-size: 17px;
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 740px;
+        margin: 0 auto;
+    }
+
+    /* Portal cards */
+    .portal-selection {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        max-width: 860px;
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .portal-card {
+        position: relative;
+        border-radius: 18px;
+        padding: 16px 18px;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        overflow: hidden;
+        text-align: center;
+        background: rgba(14, 20, 40, 0.6);
+        backdrop-filter: blur(12px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .portal-card:hover {
+        transform: translateY(-4px);
+    }
+    .portal-card.candidate-card {
+        border: 1px solid rgba(0, 242, 254, 0.25);
+        box-shadow: 0 0 0 0 rgba(0, 242, 254, 0);
+    }
+    .portal-card.candidate-card:hover {
+        border-color: rgba(0, 242, 254, 0.6);
+        box-shadow: 0 8px 40px rgba(0, 242, 254, 0.15);
+    }
+    .portal-card.recruiter-card {
+        border: 1px solid rgba(127, 0, 255, 0.25);
+        box-shadow: 0 0 0 0 rgba(127, 0, 255, 0);
+    }
+    .portal-card.recruiter-card:hover {
+        border-color: rgba(127, 0, 255, 0.6);
+        box-shadow: 0 8px 40px rgba(127, 0, 255, 0.15);
+    }
+    .portal-card .portal-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 14px;
+    }
+    .candidate-card .portal-icon {
+        background: rgba(0, 242, 254, 0.08);
+        border: 2px solid rgba(0, 242, 254, 0.4);
+        box-shadow: 0 0 24px rgba(0, 242, 254, 0.15);
+    }
+    .recruiter-card .portal-icon {
+        background: rgba(127, 0, 255, 0.08);
+        border: 2px solid rgba(127, 0, 255, 0.4);
+        box-shadow: 0 0 24px rgba(127, 0, 255, 0.15);
+    }
+    .portal-card h2 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+    .candidate-card h2 {
+        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .recruiter-card h2 {
+        background: linear-gradient(135deg, #7f00ff 0%, #a855f7 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .portal-card p {
+        color: var(--text-muted);
+        font-size: 15.5px;
+        line-height: 1.6;
+        margin-bottom: 26px;
+    }
+    .portal-glow {
+        position: absolute;
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        pointer-events: none;
+        top: -60px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 0;
+    }
+    .candidate-card .portal-glow {
+        background: radial-gradient(circle, rgba(0, 242, 254, 0.12) 0%, transparent 70%);
+    }
+    .recruiter-card .portal-glow {
+        background: radial-gradient(circle, rgba(127, 0, 255, 0.12) 0%, transparent 70%);
+    }
+    .portal-card > * { position: relative; z-index: 1; }
+
+    /* Section panels (tabs) */
+    .portal-section { display: none; margin-top: 0; width: 100%; flex-grow: 1; }
+    .portal-section.active {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        flex-grow: 1;
+    }
+    #section-recruiter.active {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .portal-grid-full {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 24px;
+        margin-top: 0;
+        width: 100%;
+        flex-grow: 1;
+    }
+
+    /* Badge pill for role */
+    .role-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 14px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+    .role-badge.candidate-badge {
+        background: rgba(0, 242, 254, 0.1);
+        border: 1px solid rgba(0, 242, 254, 0.3);
+        color: #00f2fe;
+    }
+    .role-badge.recruiter-badge {
+        background: rgba(127, 0, 255, 0.1);
+        border: 1px solid rgba(127, 0, 255, 0.3);
+        color: #a78bfa;
+    }
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-muted);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        background: none;
+        padding: 0;
+        margin-bottom: 10px;
+        transition: color 0.2s;
+    }
+    .back-btn:hover { color: var(--text-main); }
+
+    @media (max-width: 680px) {
+        .portal-selection { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="landing-home-wrapper" id="landing-home-wrapper">
+    <!-- Hero -->
+    <div class="hero">
+        <h1>Multi-Agent AI Interview Panel</h1>
+        <p>Choose your portal to get started. Candidates apply for roles and complete AI-guided interviews. Recruiters securely access performance dashboards.</p>
+    </div>
+
+    <!-- Portal Selection Splash -->
+    <div id="portal-selection" class="portal-selection">
+
+        <!-- Candidate Card -->
+        <div class="portal-card candidate-card" onclick="showSection('candidate')">
+            <div class="portal-glow"></div>
+            <div class="portal-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <h2>Candidate Portal</h2>
+            <p>Apply for an open role, upload your resume, and complete a structured AI-guided interview panel from the comfort of your browser.</p>
+            <button class="btn-primary" style="padding: 12px 28px; font-size: 14px; pointer-events: none;">
+                Begin Application →
+            </button>
+        </div>
+
+        <!-- Recruiter Card -->
+        <div class="portal-card recruiter-card" onclick="showSection('recruiter')">
+            <div class="portal-glow"></div>
+            <div class="portal-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+            </div>
+            <h2>Recruiter / Admin</h2>
+            <p>Securely log in with your passkey to view all candidate evaluations, interview scores, and AI-generated hiring recommendations.</p>
+            <button class="btn-secondary" style="padding: 12px 28px; font-size: 14px; pointer-events: none;">
+                Recruiter Login →
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ─── CANDIDATE SECTION ─────────────────────────────────── -->
+<div id="section-candidate" class="portal-section">
+    <div style="margin-bottom: 20px; display: flex; justify-content: flex-end;">
+        <button onclick="showSection('home')" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" x2="5" y1="12" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Portal Selection
+        </button>
+    </div>
+
+    <div class="portal-grid-full">
+        <div class="card" style="display:flex; flex-direction:column; justify-content:space-between; flex-grow:1;">
+            <div>
+                <span class="role-badge candidate-badge">
+                    <svg width="10" height="10" fill="#00f2fe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+                    Candidate Onboarding
+                </span>
+                <h2 class="card-title" style="margin-top:0;">Apply & Begin Interview</h2>
+            </div>
+            <form id="onboard-form" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:14px; flex-grow:1; justify-content:space-between; margin-top:10px;">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="candidate_name">Full Name</label>
+                    <input type="text" id="candidate_name" name="name" class="form-control" placeholder="John Smith" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="candidate_email">Email Address</label>
+                    <input type="email" id="candidate_email" name="email" class="form-control" placeholder="john.smith@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="job_select">Target Position *</label>
+                    <select id="job_select" name="job_id" class="form-control" required>
+                        <option value="" disabled selected>Select an open position...</option>
+                        {% for job in jobs %}
+                            <option value="{{ job.id }}">{{ job.title }} ({% if job.department %}{{ job.department }}{% else %}General{% endif %})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Resume (PDF or Text)</label>
+                    <div class="file-upload-wrapper" id="dropzone" style="padding:16px;">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-bottom:4px;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p id="file-label" style="font-size:13.5px; margin:0;">Drag & drop your resume file here or click to browse</p>
+                        <input type="file" id="resume_file" name="resume_file" accept=".pdf,.txt">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="resume_text">Or Paste Resume Text</label>
+                    <textarea id="resume_text" name="resume_text" class="form-control" style="height:75px; min-height:75px;" placeholder="Paste resume contents directly here..."></textarea>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 8px; padding: 12px 20px;">Begin Evaluation Pipeline</button>
+            </form>
+        </div>
+
+        <!-- Active Job Requirements & Assessment Guidelines -->
+        <div style="display:flex; flex-direction:column; gap:20px; flex-grow:1; height:100%;">
+            <div class="card" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <h2 class="card-title" style="margin-bottom:8px;">Role Specifications</h2>
+                    <div id="job-details-panel" style="display:flex; flex-direction:column; justify-content:space-between; height:100%;">
+                        <p style="color:var(--text-muted); font-size:13.5px; line-height:1.5;">Select a target position to review the requirements and technical scope that the Technical Agent will evaluate.</p>
+                        <div id="job-details-content" style="display:none; margin-top:10px;">
+                            <h3 id="details-title" style="color:var(--primary); margin-bottom:6px;"></h3>
+                            <p id="details-desc" style="color:var(--text-main); margin-bottom:12px; font-size:14px; line-height:1.4;"></p>
+                            <h4 style="margin-bottom:6px; font-size:13px; text-transform:uppercase; color:var(--text-muted);">Required Skills Checklist:</h4>
+                            <p id="details-reqs" style="font-family:'Space Grotesk', monospace; color:var(--primary); background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; font-size:12.5px; margin-bottom:0;"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="border-left: 4px solid var(--primary); flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <h2 class="card-title" style="margin-bottom:8px;">Assessment Guidelines</h2>
+                    <p style="color:var(--text-muted); margin-bottom:12px; font-size:13.5px; line-height:1.5;">To maintain evaluation integrity, the panel uses active proctoring checks. Please observe the rules below:</p>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:12px; font-size:13.5px; flex-grow:1; justify-content:space-around;">
+                    <div style="display:flex; align-items:flex-start; gap:10px;">
+                        <span style="color:var(--primary); font-weight:bold; font-size:15px; line-height:1;">⚡</span>
+                        <span style="color:var(--text-main); line-height:1.4;"><strong>Window Focus:</strong> Switching browser tabs or leaving the screen will log tab violations. Exceeding 3 violations triggers disqualification.</span>
+                    </div>
+                    <div style="display:flex; align-items:flex-start; gap:10px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                        <span style="color:var(--primary); font-weight:bold; font-size:15px; line-height:1;">📝</span>
+                        <span style="color:var(--text-main); line-height:1.4;"><strong>Manual Responses:</strong> Clipboard operations are blocked. Type all explanations and playground answers directly.</span>
+                    </div>
+                    <div style="display:flex; align-items:flex-start; gap:10px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                        <span style="color:var(--primary); font-weight:bold; font-size:15px; line-height:1;">🎙️</span>
+                        <span style="color:var(--text-main); line-height:1.4;"><strong>Speech Input:</strong> Optional voice transcription is available. Click the mic button to speak your answers.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── RECRUITER SECTION ──────────────────────────────────── -->
+<div id="section-recruiter" class="portal-section">
+    <div style="max-width: 480px; width: 100%; margin: 0 auto 16px auto; display: flex; justify-content: flex-end;">
+        <button onclick="showSection('home')" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" x2="5" y1="12" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Portal Selection
+        </button>
+    </div>
+
+    <div style="display:flex; justify-content:center;">
+        <div class="card" style="max-width: 480px; width: 100%; padding: 16px 18px; border: 1px solid rgba(127, 0, 255, 0.25); background: rgba(14, 20, 40, 0.65); position:relative; overflow:hidden;">
+            <div style="position:absolute; top:-60px; left:50%; transform:translateX(-50%); width:260px; height:260px; background:radial-gradient(circle, rgba(127,0,255,0.12) 0%, transparent 70%); pointer-events:none; z-index:0;"></div>
+            <div style="position:relative; z-index:1; text-align:center;">
+                <div style="width:72px; height:72px; border-radius:50%; background:rgba(127,0,255,0.08); border:2px solid rgba(127,0,255,0.5); display:flex; align-items:center; justify-content:center; margin:0 auto 20px; box-shadow:0 0 28px rgba(127,0,255,0.2);">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <span class="role-badge recruiter-badge">
+                    <svg width="10" height="10" fill="#a78bfa" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+                    Private Access
+                </span>
+                <h2 style="font-family:'Space Grotesk',sans-serif; font-weight:800; font-size:26px; margin-bottom:8px; background:linear-gradient(135deg,#7f00ff 0%,#a855f7 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+                    Recruiter Dashboard
+                </h2>
+                <p style="color:var(--text-muted); font-size:16px; margin-bottom:28px; line-height:1.65;">
+                    Enter your security passkey to access candidate evaluations, interview scores, and AI-generated hiring recommendations. This portal is restricted to authorized HR personnel only.
+                </p>
+
+                {% if recruiter_login_error %}
+                <div style="background:rgba(239,68,68,0.1); border:1px solid #ef4444; border-radius:8px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:center; gap:10px; text-align:left;">
+                    <span style="color:#f87171; font-size:16px;">⚠️</span>
+                    <span style="color:var(--text-main); font-size:15px;">{{ recruiter_login_error }}</span>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="{% url 'recruiter_login' %}">
+                    {% csrf_token %}
+                    <div class="form-group" style="margin-bottom:24px; text-align:left;">
+                        <label for="passkey" style="margin-bottom:8px; display:block; font-size:15px; font-weight:600; color:var(--text-main);">Security Passkey</label>
+                        <input type="password" id="passkey" name="passkey" class="form-control" placeholder="Enter recruiter passkey" required style="width:100%;">
+                    </div>
+                    <button type="submit" class="btn-primary" style="width:100%; padding:14px; font-size:15px; font-weight:600; border-radius:8px; background:linear-gradient(135deg,#7f00ff 0%,#a855f7 100%); border:none;">
+                        Verify & Enter Dashboard
+                    </button>
+                </form>
+
+                <p style="color:var(--text-muted); font-size:14px; margin-top:20px;">
+                    🔒 Passkey required. Contact your system administrator if you don't have access.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loader Modal Overlay -->
+<div id="analysis-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(7,11,22,0.9); z-index:9999; justify-content:center; align-items:center;">
+    <div class="loader-container" style="max-width:400px; text-align:center; padding:20px;">
+        <div class="spinner"></div>
+        <h2 style="font-family:'Space Grotesk', sans-serif; color:var(--primary); margin-bottom:12px;">Resume Analyzer Active</h2>
+        <p id="loader-status" style="color:var(--text-main); margin-bottom:16px; font-size:15px;">Initializing parsing pipelines...</p>
+        <ul id="loader-steps" style="list-style:none; text-align:left; color:var(--text-muted); font-size:13px; display:inline-block;">
+            <li id="step-1" style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">🔘 Extracting candidate metadata...</li>
+            <li id="step-2" style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">🔘 Scanning skill competencies & deficiencies...</li>
+            <li id="step-3" style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">🔘 Indexing job role parameters...</li>
+            <li id="step-4" style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">🔘 Establishing agent coordinator connections...</li>
+        </ul>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ─── Portal Navigation ──────────────────────
+    const landingHomeWrapper = document.getElementById('landing-home-wrapper');
+    const sectionCandidate = document.getElementById('section-candidate');
+    const sectionRecruiter = document.getElementById('section-recruiter');
+
+    function showSection(which) {
+        landingHomeWrapper.style.display = 'none';
+        sectionCandidate.classList.remove('active');
+        sectionRecruiter.classList.remove('active');
+
+        if (which === 'home') {
+            landingHomeWrapper.style.display = 'flex';
+        } else if (which === 'candidate') {
+            sectionCandidate.classList.add('active');
+        } else if (which === 'recruiter') {
+            sectionRecruiter.classList.add('active');
+        }
+    }
+
+    // If recruiter login error is present, auto-show recruiter section
+    {% if recruiter_login_error %}
+    showSection('recruiter');
+    {% endif %}
+
+    // ─── Job Details Rendering ──────────────────
+    const jobSelect = document.getElementById('job_select');
+    const detailsContent = document.getElementById('job-details-content');
+    const detailsTitle = document.getElementById('details-title');
+    const detailsDesc = document.getElementById('details-desc');
+    const detailsReqs = document.getElementById('details-reqs');
+
+    const jobsData = {
+        {% for job in jobs %}
+            "{{ job.id }}": {
+                "title": "{{ job.title }}",
+                "desc": "{{ job.description|escapejs }}",
+                "reqs": "{{ job.requirements|escapejs }}"
+            },
+        {% endfor %}
+    };
+
+    jobSelect.onchange = () => {
+        const sel = jobsData[jobSelect.value];
+        if (sel) {
+            detailsTitle.innerText = sel.title;
+            detailsDesc.innerText = sel.desc;
+            detailsReqs.innerText = sel.reqs;
+            detailsContent.style.display = 'block';
+            document.getElementById('job-details-panel').querySelector('p').style.display = 'none';
+        }
+    };
+
+    // ─── File Drag-Drop ─────────────────────────
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('resume_file');
+    const fileLabel = document.getElementById('file-label');
+
+    dropzone.onclick = () => fileInput.click();
+    fileInput.onchange = () => {
+        if (fileInput.files.length > 0) {
+            fileLabel.innerText = `Selected File: ${fileInput.files[0].name}`;
+            fileLabel.style.color = 'var(--primary)';
+        }
+    };
+    dropzone.ondragover = (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--primary)'; };
+    dropzone.ondragleave = () => { dropzone.style.borderColor = 'rgba(255,255,255,0.15)'; };
+    dropzone.ondrop = (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            fileLabel.innerText = `Selected File: ${fileInput.files[0].name}`;
+            fileLabel.style.color = 'var(--primary)';
+        }
+    };
+
+    // ─── Form Submission ────────────────────────
+    const form = document.getElementById('onboard-form');
+    const overlay = document.getElementById('analysis-overlay');
+    const statusText = document.getElementById('loader-status');
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        overlay.style.display = 'flex';
+
+        const steps = [
+            { id: 'step-1', text: '✅ Candidate metadata extracted.' },
+            { id: 'step-2', text: '✅ Competencies & gaps scanned.' },
+            { id: 'step-3', text: '✅ Target job role parameters indexed.' },
+            { id: 'step-4', text: '✅ Agent coordinator connections established.' }
+        ];
+
+        let currentStep = 0;
+        const stepInterval = setInterval(() => {
+            if (currentStep < steps.length) {
+                const s = steps[currentStep];
+                const li = document.getElementById(s.id);
+                li.innerText = s.text;
+                li.style.color = 'var(--primary)';
+                statusText.innerText = s.text.replace('✅ ', '');
+                currentStep++;
+            } else {
+                clearInterval(stepInterval);
+            }
+        }, 1200);
+
+        const formData = new FormData(form);
+        try {
+            const response = await fetch("{% url 'parse_resume' %}", {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            setTimeout(() => {
+                clearInterval(stepInterval);
+                if (data.session_id) {
+                    window.location.href = `/interview/${data.session_id}/`;
+                } else {
+                    alert(data.error || "An error occurred during resume parsing.");
+                    overlay.style.display = 'none';
+                }
+            }, 5000);
+        } catch (err) {
+            console.error(err);
+            clearInterval(stepInterval);
+            alert("Connection error occurred. Check your API settings.");
+            overlay.style.display = 'none';
+        }
+    };
+</script>
+{% endblock %}

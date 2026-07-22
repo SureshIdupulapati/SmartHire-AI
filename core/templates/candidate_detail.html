@@ -1,0 +1,646 @@
+{% extends 'base.html' %}
+
+{% block title %}AI HirePanel - Candidate Evaluation Report{% endblock %}
+
+{% block content %}
+<!-- Include Chart.js for visual analytics -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+    <button class="btn-primary" onclick="window.print();" style="display:flex; align-items:center; gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:white;">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        Print / Save PDF
+    </button>
+    <a href="{% url 'dashboard' %}" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" x2="5" y1="12" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Back to Dashboard
+    </a>
+</div>
+
+<!-- Header Card -->
+<div class="card" style="border-left: 6px solid var(--primary);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px;">
+        <div>
+            <h1 style="font-family:'Space Grotesk', sans-serif; font-size:32px; margin-bottom:4px;">{{ candidate.name }}</h1>
+            <p style="color:var(--text-muted); font-size:15px; margin-bottom:8px;">{{ candidate.email }} &bull; Processed on {{ session.created_at|date:"F d, Y" }}</p>
+            <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
+                <span class="badge" style="background:rgba(255,255,255,0.05); color:var(--text-main); font-size:13px; border:1px solid var(--border-color);">
+                    Target Position: {{ session.job.title }}
+                </span>
+                <span class="badge" style="background:rgba(0, 242, 254, 0.05); color:var(--primary); font-size:13px; border:1px solid var(--primary);">
+                    Suggested Title: {{ session.suggested_title }}
+                </span>
+            </div>
+        </div>
+        
+        <div style="text-align:right; display:flex; align-items:center; gap:24px;">
+            <div style="text-align:center;">
+                <span style="color:var(--text-muted); font-size:12px; text-transform:uppercase; display:block; margin-bottom:4px;">Overall Score</span>
+                <span class="score-badge">{{ session.final_score }} <span style="font-size:16px; color:var(--text-muted); font-weight:400;">/ 100</span></span>
+            </div>
+            <div>
+                <span style="color:var(--text-muted); font-size:12px; text-transform:uppercase; display:block; margin-bottom:4px; text-align:center;">Decision</span>
+                {% if session.recommendation == "Strong Hire" %}
+                    <span class="badge badge-strong-hire" style="font-size:15px; padding:8px 16px;">{{ session.recommendation }}</span>
+                {% elif session.recommendation == "Hire" %}
+                    <span class="badge badge-hire" style="font-size:15px; padding:8px 16px;">{{ session.recommendation }}</span>
+                {% elif session.recommendation == "Hire with Training" %}
+                    <span class="badge badge-training" style="font-size:15px; padding:8px 16px;">{{ session.recommendation }}</span>
+                {% elif session.recommendation == "Second Interview" %}
+                    <span class="badge badge-second" style="font-size:15px; padding:8px 16px;">{{ session.recommendation }}</span>
+                {% else %}
+                    <span class="badge badge-reject" style="font-size:15px; padding:8px 16px;">{{ session.recommendation }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2col">
+    <!-- Resume analysis card -->
+    <div class="card">
+        <h2 class="card-title">1. Resume Analysis Summary</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <span style="color:var(--text-muted); font-weight:500;">AI Resume Matcher Grade:</span>
+            <span style="font-weight:800; font-size:22px; color:var(--primary);">{{ candidate.resume_score }} <span style="font-size:14px; color:var(--text-muted);">/ 100</span></span>
+        </div>
+        <p style="font-size:14px; line-height:1.6; color:var(--text-main); margin-bottom:20px; background:rgba(0,0,0,0.2); padding:12px; border-radius:8px;">
+            {{ candidate.resume_summary }}
+        </p>
+        
+        <div class="grid-2col">
+            <div>
+                <h4 style="font-size:13px; text-transform:uppercase; color:var(--color-hire); margin-bottom:10px; letter-spacing:0.5px;">Identified Skills</h4>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                    {% for skill in candidate.skills %}
+                        <span class="badge" style="background:rgba(52, 211, 153, 0.08); color:var(--color-hire); border:1px solid rgba(52, 211, 153, 0.2); font-size:11px; padding:3px 8px; border-radius:12px;">{{ skill }}</span>
+                    {% empty %}
+                        <span style="font-size:12px; color:var(--text-muted);">None identified</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div>
+                <h4 style="font-size:13px; text-transform:uppercase; color:var(--color-training); margin-bottom:10px; letter-spacing:0.5px;">Skill Deficiencies</h4>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                    {% for skill in candidate.missing_skills %}
+                        <span class="badge" style="background:rgba(245, 158, 11, 0.08); color:var(--color-training); border:1px solid rgba(245, 158, 11, 0.2); font-size:11px; padding:3px 8px; border-radius:12px;">{{ skill }}</span>
+                    {% empty %}
+                        <span style="font-size:12px; color:var(--color-hire); font-weight:500;">No gaps observed</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 3: Visual Analytics Radar Chart Card -->
+    <div class="card" style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <h2 class="card-title" style="align-self:flex-start; width:100%;">Competency Benchmark Analysis</h2>
+        <div style="width:100%; max-width:320px; height:280px; margin: 0 auto; display:flex; justify-content:center; align-items:center;">
+            <canvas id="competencyChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2col" style="margin-top:24px;">
+    <!-- Training Roadmap card -->
+    <div class="card">
+        <h2 class="card-title">Suggested Onboarding Plan</h2>
+        <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px; line-height:1.5;">To bridge identified skill deficiencies and support potential onboarding, the Hiring Decision Agent recommends targeting these concepts:</p>
+        <ul class="bullet-list" style="font-size:14px;">
+            {% for topic in session.training_plan %}
+                <li style="display:flex; align-items:center; gap:10px; margin-bottom:12px; color:var(--text-main);">
+                    <span style="display:inline-block; width:18px; height:18px; border-radius:50%; background:rgba(0,242,254,0.1); border:1px solid var(--primary); text-align:center; line-height:16px; font-size:10px; font-weight:bold; color:var(--primary);">
+                        {{ forloop.counter }}
+                    </span>
+                    {{ topic }}
+                </li>
+            {% empty %}
+                <li>No specific training requirements flagged.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Feature 1: Security & Proctoring Integrity Audit Card -->
+    <div class="card">
+        <h2 class="card-title">Security & Proctoring Audit</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <span style="color:var(--text-muted); font-weight:500;">Integrity Verification Rating:</span>
+            {% if session.tab_focus_violations > 3 or session.copy_paste_violations > 3 %}
+                <span class="badge badge-reject" style="font-size:13px; font-weight:bold;">Flagged / Review Required</span>
+            {% elif session.tab_focus_violations > 0 or session.copy_paste_violations > 0 %}
+                <span class="badge badge-training" style="font-size:13px; font-weight:bold;">Fair / Focus Gaps</span>
+            {% else %}
+                <span class="badge badge-strong-hire" style="font-size:13px; font-weight:bold;">Verified Clean</span>
+            {% endif %}
+        </div>
+        
+        <div style="background:rgba(0,0,0,0.25); padding:16px; border-radius:8px; display:flex; flex-direction:column; gap:12px; font-size:14px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Tab Focus Switch Events:</span>
+                <strong style="color:{% if session.tab_focus_violations > 0 %}var(--color-training){% else %}var(--color-hire){% endif %}; font-size:16px;">
+                    {{ session.tab_focus_violations }}
+                </strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                <span>Interrupted Copy-Paste Attempts:</span>
+                <strong style="color:{% if session.copy_paste_violations > 0 %}var(--color-training){% else %}var(--color-hire){% endif %}; font-size:16px;">
+                    {{ session.copy_paste_violations }}
+                </strong>
+            </div>
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); line-height:1.5;">
+            * Focus switches record the number of times the candidate navigated away from the active interview room. Paste blocks record attempts to insert external contents into answer panels.
+        </p>
+    </div>
+</div>
+
+<!-- Technical Sandbox & Code Review Card -->
+<div class="card" style="margin-top:24px;">
+    <h2 class="card-title">💻 Technical Sandbox & Code Review</h2>
+    {% if session.technical_code %}
+        <p style="color:var(--text-muted); font-size:15px; margin-bottom:16px; line-height:1.6;">
+            The candidate's code submission from the Live Code Playground, along with the execution output:
+        </p>
+        <div style="display:grid; grid-template-columns: 1.4fr 0.6fr; gap:16px; min-height: 280px;">
+            <div style="display:flex; flex-direction:column;">
+                <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase; margin-bottom:8px; font-weight:bold; letter-spacing:0.05em;">Candidate's Submitted Code</div>
+                <div style="flex:1; background:#020617; border:1px solid var(--border-color); border-radius:8px; padding:16px; overflow-y:auto;">
+                    <pre style="margin:0; white-space:pre-wrap; font-family:monospace; font-size:13px; color:#7dd3fc; line-height:1.6;">{{ session.technical_code }}</pre>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+                <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase; margin-bottom:8px; font-weight:bold; letter-spacing:0.05em;">Console Output</div>
+                <div style="flex:1; background:#020617; border:1px solid var(--border-color); border-radius:8px; padding:16px; overflow-y:auto;">
+                    {% if session.technical_code_output %}
+                        <pre style="margin:0; white-space:pre-wrap; font-family:monospace; font-size:13px; line-height:1.5;
+                            {% if 'error' in session.technical_code_output|lower or 'traceback' in session.technical_code_output|lower %}
+                                color:#f87171;
+                            {% else %}
+                                color:#a3e635;
+                            {% endif %}">{{ session.technical_code_output }}</pre>
+                    {% else %}
+                        <p style="color:var(--text-muted); font-size:13px; font-style:italic;">No output recorded — candidate did not run the code.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div style="text-align:center; padding:32px 16px; color:var(--text-muted);">
+            <div style="font-size:36px; margin-bottom:12px;">🖥️</div>
+            <p style="font-size:15px;">No code was submitted by the candidate in the coding playground.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Recruiter Decision Override & Notes Card -->
+<div class="card no-print" style="margin-top:24px; border-left: 6px solid var(--secondary);">
+    <h2 class="card-title">📝 Recruiter Override & Hiring Notes</h2>
+    <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">Manually append evaluation notes and adjust the final hiring recommendation decision if necessary:</p>
+    
+    <form id="notes-override-form" onsubmit="submitNotesOverride(event)" style="display:flex; flex-direction:column; gap:16px;">
+        <div style="display:grid; grid-template-columns: 1fr 1.5fr; gap:16px;">
+            <div>
+                <label style="display:block; color:var(--text-muted); font-size:12px; text-transform:uppercase; margin-bottom:6px; font-weight:bold;">Hiring Recommendation Override</label>
+                <select id="recommendation-override-select" style="width:100%; padding:10px 12px; background:#0b0f19; border:1px solid var(--border-color); border-radius:6px; color:var(--text-main); font-family:'Outfit', sans-serif; font-size:14px;">
+                    <option value="Strong Hire" {% if session.recommendation == "Strong Hire" %}selected{% endif %}>Strong Hire</option>
+                    <option value="Hire" {% if session.recommendation == "Hire" %}selected{% endif %}>Hire</option>
+                    <option value="Hire with Training" {% if session.recommendation == "Hire with Training" %}selected{% endif %}>Hire with Training</option>
+                    <option value="Second Interview" {% if session.recommendation == "Second Interview" %}selected{% endif %}>Second Interview</option>
+                    <option value="Reject" {% if session.recommendation == "Reject" %}selected{% endif %}>Reject</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; color:var(--text-muted); font-size:12px; text-transform:uppercase; margin-bottom:6px; font-weight:bold;">Recruiter Remarks & Context Notes</label>
+                <textarea id="recruiter-notes-textarea" placeholder="Type recruiter review remarks or override rationale here..." style="width:100%; height:80px; padding:10px 12px; background:#0b0f19; border:1px solid var(--border-color); border-radius:6px; color:var(--text-main); font-family:'Outfit', sans-serif; font-size:14px; resize:none;">{{ session.recruiter_notes }}</textarea>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+            <button type="submit" class="btn-primary" style="padding:8px 24px; font-size:14px;">Save Overrides & Notes</button>
+        </div>
+    </form>
+</div>
+
+<!-- Print-Only Dossier Notes card -->
+<div class="print-only card" style="display:none; margin-top:24px; border:1px solid #ccc; padding:16px;">
+    <h2 style="font-size:16px; font-weight:bold; margin-bottom:10px; color:black !important;">Recruiter Remarks & Context Notes</h2>
+    <p style="font-size:13px; font-weight:bold; margin-bottom:8px; color:black !important;">Hiring Decision: <span id="print-recommendation-val">{{ session.recommendation }}</span></p>
+    <p id="print-notes-val" style="font-size:13px; font-style:italic; line-height:1.4; color:black !important;">{{ session.recruiter_notes|default:"No custom remarks added by recruiter." }}</p>
+</div>
+
+<!-- Round Evaluator Agents Breakdown -->
+<div class="card" style="margin-top:24px;">
+    <h2 class="card-title">Interviewer Agent Scores & Feedback</h2>
+    
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:20px;">
+        <!-- HR Agent -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:8px; padding:16px 18px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:22px;">👩‍💼</span>
+                    <span style="font-weight:700; font-size:16px; color:var(--primary);">{{ session.hr_score }}<span style="font-size:11px; color:var(--text-muted); font-weight:normal;">/100</span></span>
+                </div>
+                <h3 style="font-size:14px; font-weight:600; margin-bottom:4px;">Sophia Davis</h3>
+                <span style="font-size:11px; color:var(--text-muted);">HR & Culture Fit (20%)</span>
+            </div>
+            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin-top:8px; max-height:120px; overflow-y:auto; padding-right:6px; white-space:pre-wrap; word-wrap:break-word;">{{ session.hr_feedback }}</p>
+        </div>
+        <!-- Tech Agent -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:8px; padding:16px 18px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:22px;">💻</span>
+                    <span style="font-weight:700; font-size:16px; color:var(--primary);">{{ session.tech_score }}<span style="font-size:11px; color:var(--text-muted); font-weight:normal;">/100</span></span>
+                </div>
+                <h3 style="font-size:14px; font-weight:600; margin-bottom:4px;">Dr. Ethan Vance</h3>
+                <span style="font-size:11px; color:var(--text-muted);">Technical Competency (50%)</span>
+            </div>
+            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin-top:8px; max-height:120px; overflow-y:auto; padding-right:6px; white-space:pre-wrap; word-wrap:break-word;">{{ session.tech_feedback }}</p>
+        </div>
+        <!-- Behavioral Agent -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:8px; padding:16px 18px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:22px;">🧠</span>
+                    <span style="font-weight:700; font-size:16px; color:var(--primary);">{{ session.behavioral_score }}<span style="font-size:11px; color:var(--text-muted); font-weight:normal;">/100</span></span>
+                </div>
+                <h3 style="font-size:14px; font-weight:600; margin-bottom:4px;">Marcus Carter</h3>
+                <span style="font-size:11px; color:var(--text-muted);">Behavioral Scenarios (30%)</span>
+            </div>
+            <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin-top:8px; max-height:120px; overflow-y:auto; padding-right:6px; white-space:pre-wrap; word-wrap:break-word;">{{ session.behavioral_feedback }}</p>
+        </div>
+    </div>
+
+    <!-- Timeline Explorer tabs -->
+    <h3 style="font-size:15px; font-weight:600; margin-bottom:12px;">💬 Round Dialogue Transcripts</h3>
+    <div class="no-print" style="display:flex; gap:8px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:12px; margin-bottom:16px;">
+        <button id="tab-btn-hr" class="btn-secondary tab-btn active" onclick="switchTranscriptTab('hr')" style="font-size:12px; padding:6px 14px; border-radius:6px; cursor:pointer;">HR Chat</button>
+        <button id="tab-btn-tech" class="btn-secondary tab-btn" onclick="switchTranscriptTab('tech')" style="font-size:12px; padding:6px 14px; border-radius:6px; cursor:pointer;">Technical Chat</button>
+        <button id="tab-btn-behavioral" class="btn-secondary tab-btn" onclick="switchTranscriptTab('behavioral')" style="font-size:12px; padding:6px 14px; border-radius:6px; cursor:pointer;">Behavioral Chat</button>
+    </div>
+    
+    <!-- HR Transcript Timeline -->
+    <div id="transcript-hr" class="transcript-content" style="display:flex; flex-direction:column; gap:12px; max-height:380px; overflow-y:auto; padding-right:8px;">
+        {% for msg in session.hr_transcript %}
+            <div style="display:flex; flex-direction:column; align-items:{% if msg.sender == 'Candidate' %}flex-end{% else %}flex-start{% endif %}; width:100%;">
+                <div style="font-size:10px; color:var(--text-muted); margin-bottom:3px; margin-left:{% if msg.sender == 'Candidate' %}0{% else %}8px{% endif %}; margin-right:{% if msg.sender == 'Candidate' %}8px{% else %}0{% endif %};">{{ msg.sender }}</div>
+                <div style="
+                    max-width:80%; 
+                    padding:10px 14px; 
+                    border-radius:12px; 
+                    font-size:13px; 
+                    line-height:1.4;
+                    {% if msg.sender == 'Candidate' %}
+                        background:var(--primary); color:#000; border-top-right-radius:2px;
+                    {% elif 'System' in msg.sender or 'Audit' in msg.sender %}
+                        background:rgba(239, 68, 68, 0.1); color:var(--color-reject); border:1px solid rgba(239, 68, 68, 0.25); border-top-left-radius:2px;
+                    {% else %}
+                        background:rgba(255,255,255,0.04); color:var(--text-main); border:1px solid rgba(255,255,255,0.06); border-top-left-radius:2px;
+                    {% endif %}">
+                    {{ msg.text }}
+                </div>
+            </div>
+        {% empty %}
+            <p style="color:var(--text-muted); font-size:13px; text-align:center;">No HR round chat transcript logged.</p>
+        {% endfor %}
+    </div>
+    
+    <!-- Tech Transcript Timeline -->
+    <div id="transcript-tech" class="transcript-content" style="display:none; flex-direction:column; gap:12px; max-height:380px; overflow-y:auto; padding-right:8px;">
+        {% for msg in session.tech_transcript %}
+            <div style="display:flex; flex-direction:column; align-items:{% if msg.sender == 'Candidate' %}flex-end{% else %}flex-start{% endif %}; width:100%;">
+                <div style="font-size:10px; color:var(--text-muted); margin-bottom:3px; margin-left:{% if msg.sender == 'Candidate' %}0{% else %}8px{% endif %}; margin-right:{% if msg.sender == 'Candidate' %}8px{% else %}0{% endif %};">{{ msg.sender }}</div>
+                <div style="
+                    max-width:80%; 
+                    padding:10px 14px; 
+                    border-radius:12px; 
+                    font-size:13px; 
+                    line-height:1.4;
+                    {% if msg.sender == 'Candidate' %}
+                        background:var(--primary); color:#000; border-top-right-radius:2px;
+                    {% elif 'System' in msg.sender or 'Audit' in msg.sender %}
+                        background:rgba(239, 68, 68, 0.1); color:var(--color-reject); border:1px solid rgba(239, 68, 68, 0.25); border-top-left-radius:2px;
+                    {% else %}
+                        background:rgba(255,255,255,0.04); color:var(--text-main); border:1px solid rgba(255,255,255,0.06); border-top-left-radius:2px;
+                    {% endif %}">
+                    {{ msg.text }}
+                </div>
+            </div>
+        {% empty %}
+            <p style="color:var(--text-muted); font-size:13px; text-align:center;">No Technical round chat transcript logged.</p>
+        {% endfor %}
+    </div>
+    
+    <!-- Behavioral Transcript Timeline -->
+    <div id="transcript-behavioral" class="transcript-content" style="display:none; flex-direction:column; gap:12px; max-height:380px; overflow-y:auto; padding-right:8px;">
+        {% for msg in session.behavioral_transcript %}
+            <div style="display:flex; flex-direction:column; align-items:{% if msg.sender == 'Candidate' %}flex-end{% else %}flex-start{% endif %}; width:100%;">
+                <div style="font-size:10px; color:var(--text-muted); margin-bottom:3px; margin-left:{% if msg.sender == 'Candidate' %}0{% else %}8px{% endif %}; margin-right:{% if msg.sender == 'Candidate' %}8px{% else %}0{% endif %};">{{ msg.sender }}</div>
+                <div style="
+                    max-width:80%; 
+                    padding:10px 14px; 
+                    border-radius:12px; 
+                    font-size:13px; 
+                    line-height:1.4;
+                    {% if msg.sender == 'Candidate' %}
+                        background:var(--primary); color:#000; border-top-right-radius:2px;
+                    {% elif 'System' in msg.sender or 'Audit' in msg.sender %}
+                        background:rgba(239, 68, 68, 0.1); color:var(--color-reject); border:1px solid rgba(239, 68, 68, 0.25); border-top-left-radius:2px;
+                    {% else %}
+                        background:rgba(255,255,255,0.04); color:var(--text-main); border:1px solid rgba(255,255,255,0.06); border-top-left-radius:2px;
+                    {% endif %}">
+                    {{ msg.text }}
+                </div>
+            </div>
+        {% empty %}
+            <p style="color:var(--text-muted); font-size:13px; text-align:center;">No Behavioral round chat transcript logged.</p>
+        {% endfor %}
+    </div>
+</div>
+
+
+<script>
+    // 0. Recruiter Override & Notes Handler
+    function submitNotesOverride(e) {
+        e.preventDefault();
+        const recommendation = document.getElementById('recommendation-override-select').value;
+        const notes = document.getElementById('recruiter-notes-textarea').value;
+        
+        const formData = new FormData();
+        formData.append('recommendation_override', recommendation);
+        formData.append('recruiter_notes', notes);
+        
+        fetch("{% url 'recruiter_notes_override' session.id %}", {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast("Overrides and evaluation notes saved successfully!", "success");
+                
+                // Update recommendation badge in header card
+                const badgeElement = document.querySelector('.score-badge').parentElement.nextElementSibling.querySelector('.badge');
+                if (badgeElement) {
+                    badgeElement.textContent = data.recommendation;
+                    badgeElement.className = 'badge';
+                    if (data.recommendation === 'Strong Hire') badgeElement.classList.add('badge-strong-hire');
+                    else if (data.recommendation === 'Hire') badgeElement.classList.add('badge-hire');
+                    else if (data.recommendation === 'Hire with Training') badgeElement.classList.add('badge-training');
+                    else if (data.recommendation === 'Second Interview') badgeElement.classList.add('badge-second');
+                    else badgeElement.classList.add('badge-reject');
+                }
+                
+                // Update print values
+                document.getElementById('print-recommendation-val').textContent = data.recommendation;
+                document.getElementById('print-notes-val').textContent = data.recruiter_notes || "No custom remarks added by recruiter.";
+            } else {
+                showToast("Failed to save evaluation notes.", "error");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("An error occurred while saving notes.", "error");
+        });
+    }
+
+    function showToast(message, type = 'success') {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.position = 'fixed';
+            container.style.bottom = '24px';
+            container.style.right = '24px';
+            container.style.zIndex = '9999';
+            container.style.display = 'flex';
+            container.style.flexDirection = 'column';
+            container.style.gap = '10px';
+            document.body.appendChild(container);
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast-item';
+        toast.style.background = type === 'success' ? '#10b981' : '#ef4444';
+        toast.style.color = '#fff';
+        toast.style.padding = '12px 20px';
+        toast.style.borderRadius = '6px';
+        toast.style.fontSize = '14px';
+        toast.style.fontFamily = "'Outfit', sans-serif";
+        toast.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.3)';
+        toast.style.transition = 'all 0.3s ease';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.textContent = message;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 10);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // 1. Dialogue Timeline Tab Switcher
+    function switchTranscriptTab(tabName) {
+        document.querySelectorAll('.transcript-content').forEach(el => el.style.display = 'none');
+        document.getElementById('transcript-' + tabName).style.display = 'flex';
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('tab-btn-' + tabName).classList.add('active');
+    }
+
+    // 2. Monaco Diff Editor Initialization
+    {% if session.technical_code %}
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs' } });
+    require(['vs/editor/editor.main'], function() {
+        let originalCode = [
+            '# Python Technical Playground',
+            '# Optimize this slow lookup algorithm:',
+            'def optimize_data_lookup(records):',
+            '    # Convert input list to a set to do O(1) searches',
+            '    search_set = set(records)',
+            '    print(f"Index mapped {len(search_set)} elements.")',
+            '    return search_set',
+            '',
+            '# Test execution',
+            'sample_data = ["patient_1", "patient_2", "patient_1", "patient_3"]',
+            'print(optimize_data_lookup(sample_data))'
+        ].join('\n');
+
+        const jobTitle = "{{ session.job.title|escapejs }}".toLowerCase();
+        if (jobTitle.includes("frontend") || jobTitle.includes("react")) {
+            originalCode = [
+                '# Python Technical Playground - Frontend Engine Simulator',
+                '# Calculate optimal page rendering chunk divisions:',
+                'def calculate_rendering_batches(items, page_size=10):',
+                '    batches = [items[i:i + page_size] for i in range(0, len(items), page_size)]',
+                '    print(f"Divided {len(items)} components into {len(batches)} optimal paint batches.")',
+                '    return batches',
+                '',
+                '# Simulate rendering execution',
+                'items_list = [f"render_item_{i}" for i in range(75)]',
+                'print(calculate_rendering_batches(items_list))'
+            ].join('\n');
+        } else if (jobTitle.includes("devops") || jobTitle.includes("infrastructure") || jobTitle.includes("cloud")) {
+            originalCode = [
+                '# Python Technical Playground - Infrastructure Allocation Optimizer',
+                '# Optimize placement of container weights into VM host capacities:',
+                'def optimize_container_hosts(containers_ram, host_capacity_ram=1024):',
+                '    allocated_hosts = []',
+                '    for ram in sorted(containers_ram, reverse=True):',
+                '        placed = False',
+                '        for i, host in enumerate(allocated_hosts):',
+                '            if sum(host) + ram <= host_capacity_ram:',
+                '                allocated_hosts[i].append(ram)',
+                '                placed = True',
+                '                break',
+                '        if not placed:',
+                '            allocated_hosts.append([ram])',
+                '    print(f"Scheduled {len(containers_ram)} instances onto {len(allocated_hosts)} nodes.")',
+                '    return len(allocated_hosts)',
+                '',
+                '# Execute DevOps scheduling simulation',
+                'containers = [128, 256, 512, 128, 64, 512, 256, 128]',
+                'print("Optimal cloud nodes count:", optimize_container_hosts(containers))'
+            ].join('\n');
+        }
+
+        const modifiedCode = `{{ session.technical_code|escapejs }}`;
+        
+        const diffEditor = monaco.editor.createDiffEditor(document.getElementById('monaco-diff-container'), {
+            readOnly: true,
+            theme: 'vs-dark',
+            automaticLayout: true,
+            minimap: { enabled: false }
+        });
+
+        diffEditor.setModel({
+            original: monaco.editor.createModel(originalCode, 'python'),
+            modified: monaco.editor.createModel(modifiedCode, 'python')
+        });
+    });
+    {% endif %}
+
+    // 3. Competency Radar Chart Config
+    const ctx = document.getElementById('competencyChart').getContext('2d');
+    const competencyChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['Resume Score', 'HR Round', 'Tech Round', 'Behavioral'],
+            datasets: [{
+                label: '{{ candidate.name }} (Current)',
+                data: [
+                    {{ candidate.resume_score }},
+                    {{ session.hr_score }},
+                    {{ session.tech_score }},
+                    {{ session.behavioral_score }}
+                ],
+                backgroundColor: 'rgba(0, 242, 254, 0.25)',
+                borderColor: '#00f2fe',
+                borderWidth: 2,
+                pointBackgroundColor: '#00f2fe'
+            }, {
+                label: 'Benchmark Average',
+                data: [
+                    {{ benchmarks.resume }},
+                    {{ benchmarks.hr }},
+                    {{ benchmarks.tech }},
+                    {{ benchmarks.behavioral }}
+                ],
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                borderColor: 'rgba(255, 255, 255, 0.3)',
+                borderWidth: 1.5,
+                borderDash: [5, 5],
+                pointBackgroundColor: 'rgba(255, 255, 255, 0.5)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: { color: 'rgba(255, 255, 255, 0.08)' },
+                    grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                    pointLabels: { color: '#94a3b8', font: { family: 'Outfit', size: 10 } },
+                    ticks: { display: false, stepSize: 20 },
+                    min: 0,
+                    max: 100
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#f1f5f9', font: { family: 'Outfit', size: 11 } }
+                }
+            }
+        }
+    });
+</script>
+
+<!-- CSS styling for active tabs and print layouts -->
+<style>
+    .tab-btn.active {
+        background: rgba(0, 242, 254, 0.12) !important;
+        border-color: var(--primary) !important;
+        color: var(--primary) !important;
+    }
+    
+    @media print {
+        body {
+            background: white !important;
+            color: black !important;
+            font-size: 12px !important;
+        }
+        header, footer, .no-print {
+            display: none !important;
+        }
+        .card {
+            background: none !important;
+            border: 1px solid #ccc !important;
+            color: black !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            margin-bottom: 20px !important;
+            padding: 20px !important;
+            page-break-inside: avoid;
+        }
+        .score-badge {
+            color: black !important;
+        }
+        .badge {
+            border: 1px solid #000 !important;
+            color: black !important;
+            background: none !important;
+        }
+        h1, h2, h3, h4 {
+            color: black !important;
+        }
+        
+        /* Expand all transcripts sequentially for print documentation */
+        .transcript-content {
+            display: flex !important;
+            max-height: none !important;
+            overflow-y: visible !important;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .transcript-content:last-of-type {
+            border-bottom: none;
+        }
+    }
+</style>
+{% endblock %}
