@@ -508,7 +508,11 @@ def parse_resume(request):
     })
 
 def interview_room(request, session_id):
-    session = get_object_or_404(InterviewSession, id=session_id)
+    try:
+        session = InterviewSession.objects.get(id=session_id)
+    except InterviewSession.DoesNotExist:
+        return redirect('landing_page')
+
     if session.is_completed:
         return redirect('interview_completed', session_id=session.id)
     
@@ -539,7 +543,11 @@ def interview_room(request, session_id):
     return render(request, 'interview_room.html', context)
 
 def interview_completed(request, session_id):
-    session = get_object_or_404(InterviewSession, id=session_id)
+    try:
+        session = InterviewSession.objects.get(id=session_id)
+    except InterviewSession.DoesNotExist:
+        return redirect('landing_page')
+
     has_api_key = has_api_key_configured()
     
     context = {
