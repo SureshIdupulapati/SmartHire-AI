@@ -273,7 +273,7 @@ def ensure_dynamic_coding_challenge(session):
     {{
         "title": "Task title",
         "instructions": "Task description and clear requirements...",
-        "starter_code": "# Python Live Coding Challenge\ndef solution(data):\n    # TODO: Implement solution\n    return data\n\n# Test execution\nprint(solution([1, 2, 3]))"
+        "starter_code": "# Python Live Coding Challenge\\ndef solution(data):\\n    # TODO: Implement solution\\n    return data\\n\\n# Test execution\\nprint(solution([1, 2, 3]))"
     }}
     """
     res = call_gemini_api(prompt)
