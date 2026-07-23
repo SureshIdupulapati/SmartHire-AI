@@ -329,7 +329,10 @@ def get_fallback_question(stage, session, question_index):
     """
     result = call_gemini_api(prompt)
     if result and 'question' in result:
-        return result['question']
+        q_val = result['question']
+        if isinstance(q_val, dict):
+            return str(q_val.get('question') or q_val.get('text') or str(q_val))
+        return str(q_val)
         
     if stage == 'hr':
         return f"Welcome {session.candidate.name}! I am Sophia Davis from HR. Could you introduce yourself and tell me what interests you about the '{session.job.title}' role based on your experience listed in your resume?"
@@ -686,7 +689,11 @@ def interview_action(request, session_id):
             """
             result = call_gemini_api(prompt)
             if result and 'question' in result:
-                next_question = result['question']
+                q_val = result['question']
+                if isinstance(q_val, dict):
+                    next_question = str(q_val.get('question') or q_val.get('text') or str(q_val))
+                else:
+                    next_question = str(q_val)
             else:
                 next_question = get_fallback_question(stage, session, 1)
         else:

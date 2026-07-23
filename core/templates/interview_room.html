@@ -414,7 +414,11 @@
 
     // AI Speaks
     function speakText(text) {
-        if (!voiceToggle.checked) return;
+        if (!text || !voiceToggle.checked) return;
+        if (typeof text === 'object' && text !== null) {
+            text = text.question || text.text || text.message || JSON.stringify(text);
+        }
+        text = String(text);
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.0;
@@ -618,6 +622,9 @@
     };
 
     function appendMessage(sender, text, type) {
+        if (typeof text === 'object' && text !== null) {
+            text = text.question || text.text || text.message || JSON.stringify(text);
+        }
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${type}`;
         
@@ -626,7 +633,7 @@
         senderDiv.innerText = type === 'candidate' ? 'You (Candidate)' : (type === 'system' ? 'System Audit' : sender);
         
         const contentDiv = document.createElement('div');
-        contentDiv.innerText = text;
+        contentDiv.innerText = String(text);
 
         msgDiv.appendChild(senderDiv);
         msgDiv.appendChild(contentDiv);
