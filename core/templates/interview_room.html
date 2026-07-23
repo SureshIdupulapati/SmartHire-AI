@@ -321,157 +321,8 @@
             const dynamicTask = "{{ session.coding_challenge_desc|escapejs }}";
             const dynamicCode = "{{ session.coding_challenge_starter_code|escapejs }}";
 
-            const variantIndex = (parseInt("{{ session.id }}") || 0) % 3;
-            const jobTitle = "{{ session.job.title|escapejs }}".toLowerCase();
-            let starterCode = "";
-            let taskText = "";
-
-            if (dynamicTask && dynamicCode && dynamicTask.length > 5) {
-                taskText = dynamicTask;
-                starterCode = dynamicCode;
-            } else if (jobTitle.includes("frontend") || jobTitle.includes("react")) {
-                const options = [
-                    [
-                        '# Python Technical Playground - Frontend Engine Simulator (Variant A)',
-                        '# Task: Implement a function to divide items into pages of size page_size.',
-                        'def calculate_rendering_batches(items, page_size=10):',
-                        '    # TODO: Implement the batching division logic here.',
-                        '    # Currently, it incorrectly returns the entire list in a single batch.',
-                        '    return [items]',
-                        '',
-                        '# Simulate rendering execution',
-                        'items_list = [f"render_item_{i}" for i in range(75)]',
-                        'print(calculate_rendering_batches(items_list, 10))'
-                    ].join('\n'),
-                    [
-                        '# Python Technical Playground - Frontend Component Filter (Variant B)',
-                        '# Task: Filter the elements list and return the IDs of components where active is True.',
-                        'def filter_active_components(components):',
-                        '    # TODO: Filter components and extract active element IDs.',
-                        '    # Currently, it incorrectly returns an empty list.',
-                        '    return []',
-                        '',
-                        '# Test execution',
-                        'ui_elements = [{"id": "btn-1", "active": True}, {"id": "card-2", "active": False}, {"id": "nav-3", "active": True}]',
-                        'print(filter_active_components(ui_elements))'
-                    ].join('\n'),
-                    [
-                        '# Python Technical Playground - Render Order Sorter (Variant C)',
-                        '# Task: Sort elements based on their depth render index (z_index) ascending and return their IDs.',
-                        'def sort_render_order(elements):',
-                        '    # TODO: Sort the elements list by the "z_index" key and return a list of their IDs.',
-                        '    # Currently, it incorrectly returns an empty list.',
-                        '    return []',
-                        '',
-                        '# Test execution',
-                        'elements = [{"id": "header", "z_index": 100}, {"id": "bg-image", "z_index": 0}, {"id": "modal", "z_index": 999}]',
-                        'print(sort_render_order(elements))'
-                    ].join('\n')
-                ];
-                const instructions = [
-                    "Complete the `calculate_rendering_batches(items, page_size)` function to partition the array of component items into sub-arrays of maximum length `page_size`.",
-                    "Complete the `filter_active_components(components)` function to filter out inactive elements and return a list of active element IDs only.",
-                    "Complete the `sort_render_order(elements)` function to sort UI elements by their `z_index` property in ascending order and return a list of their IDs."
-                ];
-                starterCode = options[variantIndex];
-                taskText = instructions[variantIndex];
-            } else if (jobTitle.includes("devops") || jobTitle.includes("infrastructure") || jobTitle.includes("cloud")) {
-                const options = [
-                    [
-                        '# Python Technical Playground - Infrastructure Allocation Optimizer (Variant A)',
-                        '# Task: Distribute container sizes into virtual machine hosts of capacity host_capacity_ram.',
-                        'def optimize_container_hosts(containers_ram, host_capacity_ram=1024):',
-                        '    # TODO: Distribute containers without exceeding host capacity and return the total host count needed.',
-                        '    # Currently, it incorrectly returns 1.',
-                        '    return 1',
-                        '',
-                        '# Execute DevOps scheduling simulation',
-                        'containers = [128, 256, 512, 128, 64, 512, 256, 128]',
-                        'print("Nodes count needed:", optimize_container_hosts(containers))'
-                    ].join('\n'),
-                    [
-                        '# Python Technical Playground - Server Log Parser (Variant B)',
-                        '# Task: Parse logs of format "TIME - STATUS - SERVICE" and return unique names with warnings/errors.',
-                        'def parse_error_services(logs):',
-                        '    # TODO: Extract and return a set of unique service names that logged WARNING or ERROR status.',
-                        '    # Currently, it incorrectly returns an empty set.',
-                        '    return set()',
-                        '',
-                        '# Test execution',
-                        'sys_logs = ["10:00 - INFO - AuthPortal", "10:01 - WARNING - PaymentGateway", "10:02 - ERROR - DatabaseNode"]',
-                        'print(parse_error_services(sys_logs))'
-                    ].join('\n'),
-                    [
-                        '# Python Technical Playground - Node Memory Threshold Monitor (Variant C)',
-                        '# Task: Detect nodes exceeding memory usage threshold (e.g. 85.0%).',
-                        'def find_overloaded_nodes(nodes, threshold=85.0):',
-                        '    # TODO: Calculate percent utilization as (used / total) * 100 and return a list of overloaded node names.',
-                        '    # Currently, it incorrectly returns an empty list.',
-                        '    return []',
-                        '',
-                        '# Test execution',
-                        'infra_nodes = {',
-                        '    "node-a": {"used": 80, "total": 100},',
-                        '    "node-b": {"used": 95, "total": 100},',
-                        '    "node-c": {"used": 50, "total": 100}',
-                        '}',
-                        'print(find_overloaded_nodes(infra_nodes, 85.0))'
-                    ].join('\n')
-                ];
-                const instructions = [
-                    "Complete the `optimize_container_hosts(containers_ram, host_capacity_ram)` function to schedule containers into nodes of capacity `1024` without overflowing, returning the number of hosts required.",
-                    "Complete the `parse_error_services(logs)` function to extract a set of unique service names generating `WARNING` or `ERROR` messages from the log records.",
-                    "Complete the `find_overloaded_nodes(nodes, threshold)` function to monitor cluster nodes and return a list of nodes where memory utilization (used/total) exceeds the specified threshold percentage."
-                ];
-                starterCode = options[variantIndex];
-                taskText = instructions[variantIndex];
-            } else {
-                const options = [
-                    [
-                        '# Python Technical Playground - Search Optimization (Variant A)',
-                        '# Task: Optimize the membership lookup to execute in O(1) average time complexity.',
-                        'def check_membership_optimized(records, target):',
-                        '    # TODO: Optimize lookup from O(N) to O(1) using an appropriate collection.',
-                        '    # Check membership and return True/False.',
-                        '    return target in records',
-                        '',
-                        '# Test execution',
-                        'sample_data = ["patient_1", "patient_2", "patient_1", "patient_3"]',
-                        'print(check_membership_optimized(sample_data, "patient_3"))'
-                    ].join('\n'),
-                    [
-                        '# Python Technical Playground - Word Reverse (Variant B)',
-                        '# Task: Reverse word ordering in a space-separated sentence string.',
-                        'def reverse_sentence_words(sentence):',
-                        '    # TODO: Split sentence into words, reverse order, and rejoin with spaces.',
-                        '    # Currently, it incorrectly returns the original sentence.',
-                        '    return sentence',
-                        '',
-                        '# Test execution',
-                        'test_str = "scalable python microservices architecture"',
-                        'print(reverse_sentence_words(test_str))'
-                    ].join('\n'),
-                    [
-                        '# Python Technical Playground - Word Frequency Counter (Variant C)',
-                        '# Task: Count the frequency of each unique word in a string, ignoring letter case.',
-                        'def count_word_frequencies(text):',
-                        '    # TODO: Split the normalized text and return a dictionary mapping words to counts.',
-                        '    # Currently, it incorrectly returns an empty dictionary.',
-                        '    return {}',
-                        '',
-                        '# Test execution',
-                        'sample_text = "Python is great and Django is built on Python"',
-                        'print(count_word_frequencies(sample_text))'
-                    ].join('\n')
-                ];
-                const instructions = [
-                    "Complete the `check_membership_optimized(records, target)` function. Convert the records into a high-performance lookup set to achieve average O(1) lookup complexity, returning a boolean result.",
-                    "Complete the `reverse_sentence_words(sentence)` function to split the sentence string into words, reverse their ordering, and return the joined result.",
-                    "Complete the `count_word_frequencies(text)` function to tokenize the input text (ignoring case) and return a dictionary containing word-to-count frequencies."
-                ];
-                starterCode = options[variantIndex];
-                taskText = instructions[variantIndex];
-            }
+            let starterCode = dynamicCode || "# Python Live Coding Playground\ndef solution(data):\n    # TODO: Implement solution\n    return data\n\n# Test execution\nprint(solution([1, 2, 3]))";
+            let taskText = dynamicTask || "Review the technical challenge instructions and implement your Python solution.";
 
             // Set the task banner description text
             document.getElementById('playground-task-text').innerText = taskText;
@@ -733,9 +584,14 @@
                     if (data.show_sandbox) {
                         sandbox.style.display = 'flex';
                         layoutContainer.style.gridTemplateColumns = '280px 1.1fr 1.3fr';
+                        if (data.coding_challenge_desc) {
+                            document.getElementById('playground-task-text').innerText = data.coding_challenge_desc;
+                        }
                         if (!editorInstance) {
                             initMonaco();
                             initPyodide();
+                        } else if (data.coding_challenge_starter_code) {
+                            editorInstance.setValue(data.coding_challenge_starter_code);
                         }
                     } else {
                         sandbox.style.display = 'none';

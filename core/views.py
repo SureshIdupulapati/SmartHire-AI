@@ -492,6 +492,9 @@ def parse_resume(request):
         current_stage='hr'
     )
 
+    # Pre-generate dynamic coding challenge tailored to candidate & job
+    ensure_dynamic_coding_challenge(session)
+
     # First question is always HR round Q1
     first_q = get_fallback_question('hr', session, 0)
     session.hr_transcript.append({"sender": "HR Agent", "text": first_q})
@@ -509,6 +512,9 @@ def interview_room(request, session_id):
     if session.is_completed:
         return redirect('interview_completed', session_id=session.id)
     
+    # Ensure dynamic coding challenge is ready
+    ensure_dynamic_coding_challenge(session)
+
     # Get the latest message in transcripts
     current_transcript = []
     if session.current_stage == 'hr':
@@ -855,7 +861,9 @@ def interview_action(request, session_id):
         'next_question': next_question,
         'is_completed': session.is_completed,
         'candidate_id': session.candidate.id,
-        'show_sandbox': show_sandbox
+        'show_sandbox': show_sandbox,
+        'coding_challenge_desc': session.coding_challenge_desc,
+        'coding_challenge_starter_code': session.coding_challenge_starter_code
     })
 
 @recruiter_required
