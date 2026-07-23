@@ -15,7 +15,8 @@ media/
 
 # Environment variables
 .env
-.env.*
+.env.local
+!.env.example
 
 # Virtual environments
 venv/
