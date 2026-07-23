@@ -264,16 +264,16 @@ def ensure_dynamic_coding_challenge(session):
     Candidate Resume Summary: {session.candidate.resume_summary}
     Candidate Resume Text: {session.candidate.resume_text}
     
-    Provide:
-    1. A short title for the coding task.
-    2. A clear 1-2 sentence problem instruction statement.
-    3. Complete Python starter code template defining the function to complete with a test call at the bottom.
+    CRITICAL FORMATTING RULES:
+    1. Instructions MUST be clear, professional English with proper spaces between words. Do NOT concatenate words together.
+    2. Starter code MUST be valid, clean Python code using standard function naming like `def solution(data):`.
+    3. Include clean docstring comments and a simple working test call at the bottom.
     
     Return a JSON object:
     {{
-        "title": "Task title",
-        "instructions": "Task description and clear requirements...",
-        "starter_code": "# Python Live Coding Challenge\\ndef solution(data):\\n    # TODO: Implement solution\\n    return data\\n\\n# Test execution\\nprint(solution([1, 2, 3]))"
+        "title": "Clean Task Title",
+        "instructions": "Implement a function `solution(items)` that calculates...",
+        "starter_code": "# Python Live Coding Challenge\\ndef solution(items):\\n    # TODO: Implement your solution here\\n    return items\\n\\n# Test execution\\nprint(solution([100, 200, 300]))"
     }}
     """
     res = call_gemini_api(prompt)
@@ -526,9 +526,9 @@ def interview_room(request, session_id):
 
     latest_question = current_transcript[-1]['text'] if current_transcript else ""
 
-    # Calculate show_sandbox state: only show when stage is tech and we are on the first question
-    tech_agent_questions = sum(1 for msg in session.tech_transcript if msg['sender'] != 'Candidate')
-    show_sandbox = (session.current_stage == 'tech' and tech_agent_questions == 1)
+    # Calculate show_sandbox state: only show when stage is tech and candidate has NOT yet submitted an answer to the coding challenge
+    tech_candidate_answers = sum(1 for msg in session.tech_transcript if msg['sender'] == 'Candidate')
+    show_sandbox = (session.current_stage == 'tech' and tech_candidate_answers == 0)
 
     context = {
         'session': session,
@@ -653,7 +653,7 @@ def interview_action(request, session_id):
         if has_api:
             tech_note = ""
             if stage == 'tech':
-                tech_note = "\nCRITICAL: The candidate has completed the live coding portion. Do NOT ask them to write more code, modify code, or complete another coding challenge. Ask a conceptual, high-level technical question about their projects or technical experience listed in their resume summary."
+                tech_note = "\nCRITICAL INSTRUCTION FOR TECH ROUND FOLLOW-UP:\n- The candidate has completed the live coding portion. Do NOT ask them to write more code, modify code, or complete another coding challenge.\n- Inspect their last response. If the candidate gave a nonsensical, minimal, or gibberish answer (e.g. random letters or 'idk'), acknowledge professionally that their submission was incomplete/unclear, and transition directly to asking a conceptual architectural/system-design question about their past projects or technical experience listed in their resume summary."
 
             # Let Gemini construct a smart follow up
             prompt = f"""
@@ -851,9 +851,9 @@ def interview_action(request, session_id):
     session.current_stage = next_stage
     session.save()
 
-    # Calculate show_sandbox state: only show when next_stage is tech and we are on the first question
-    tech_agent_questions = sum(1 for msg in session.tech_transcript if msg['sender'] != 'Candidate')
-    show_sandbox = (next_stage == 'tech' and tech_agent_questions == 1)
+    # Calculate show_sandbox state: only show when next_stage is tech and candidate has NOT yet submitted an answer to the coding challenge
+    tech_candidate_answers = sum(1 for msg in session.tech_transcript if msg['sender'] == 'Candidate')
+    show_sandbox = (next_stage == 'tech' and tech_candidate_answers == 0)
 
     return JsonResponse({
         'status': 'success',
