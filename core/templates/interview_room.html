@@ -318,13 +318,18 @@
     function initMonaco() {
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs' } });
         require(['vs/editor/editor.main'], function() {
-            // Determine custom starting template based on target job role and session.id variation
+            const dynamicTask = "{{ session.coding_challenge_desc|escapejs }}";
+            const dynamicCode = "{{ session.coding_challenge_starter_code|escapejs }}";
+
             const variantIndex = (parseInt("{{ session.id }}") || 0) % 3;
             const jobTitle = "{{ session.job.title|escapejs }}".toLowerCase();
             let starterCode = "";
             let taskText = "";
 
-            if (jobTitle.includes("frontend") || jobTitle.includes("react")) {
+            if (dynamicTask && dynamicCode && dynamicTask.length > 5) {
+                taskText = dynamicTask;
+                starterCode = dynamicCode;
+            } else if (jobTitle.includes("frontend") || jobTitle.includes("react")) {
                 const options = [
                     [
                         '# Python Technical Playground - Frontend Engine Simulator (Variant A)',

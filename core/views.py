@@ -254,127 +254,89 @@ def extract_context_from_resume(resume_text):
             
     return projects, experience
 
-# Dynamic fallback question generator based on candidate profile and job requirements
-def get_fallback_question(stage, session, question_index):
-    # Try dynamic generation with AI if API key is configured
-    has_api = has_api_key_configured()
+def ensure_dynamic_coding_challenge(session):
+    if session.coding_challenge_desc and session.coding_challenge_starter_code:
+        return session.coding_challenge_desc, session.coding_challenge_starter_code
+        
+    prompt = f"""
+    Create a practical, real-world Python live coding challenge for a candidate interviewing for '{session.job.title}'.
+    Job Requirements: {session.job.requirements}
+    Candidate Resume Summary: {session.candidate.resume_summary}
+    Candidate Resume Text: {session.candidate.resume_text}
     
-    if has_api:
-        prompt = f"""
-        You are the {stage.upper()} interviewer agent in a professional multi-agent interview panel.
-        Candidate Name: {session.candidate.name}
-        Job Title: {session.job.title}
-        Job Description: {session.job.description}
-        Candidate Resume: {session.candidate.resume_text}
-        
-        Generate a unique, highly personalized interview question for this candidate at stage '{stage}' (question index: {question_index}).
-        
-        Guidelines:
-        - If stage is 'hr':
-          - Greet the candidate professionally as Sophia Davis (HR Agent).
-          - If index is 0, ask an opening question requesting introduction and interest in the job, referencing a specific project or experience from their resume.
-          - If index is 1, ask a follow-up question focusing on their core career goal, work style, or strength based on their resume.
-        - If stage is 'tech':
-          - If index is 0:
-            You are Dr. Ethan Vance, the Technical Agent. Introduce the technical round and explicitly tell the candidate to solve the practical coding challenge loaded in the Live Python Code Playground on the right side of their screen. Example: "Hello {session.candidate.name}! I am Dr. Ethan Vance, the Technical Agent. For your first technical task, I have loaded a practical coding challenge in the Live Python Code Playground on the right. Please review the challenge instructions, implement your code in the editor, click '⚡ Run Code' to verify it, and click 'Use as Answer' to submit your solution."
-          - If index is 1:
-            The coding challenge portion is finished. Ask a deep dive conceptual/architectural question tailored to their resume projects (e.g. system design, API scaling, database optimization, or framework choices).
-        - If stage is 'behavioral':
-          - If index is 0, ask about a team challenge, conflict, or milestone they handled in a project listed on their resume.
-          - If index is 1, ask about managing delays, learning from a project failure, or dealing with shifting requirements in their past roles.
-          
-        You must return a JSON object:
-        {{
-            "question": "Your personalized question text here"
-        }}
-        """
-        try:
-            result = call_gemini_api(prompt)
-            if result and 'question' in result:
-                return result['question']
-        except Exception as e:
-            print(f"Error in dynamic get_fallback_question: {e}")
+    Provide:
+    1. A short title for the coding task.
+    2. A clear 1-2 sentence problem instruction statement.
+    3. Complete Python starter code template defining the function to complete with a test call at the bottom.
+    
+    Return a JSON object:
+    {{
+        "title": "Task title",
+        "instructions": "Task description and clear requirements...",
+        "starter_code": "# Python Live Coding Challenge\ndef solution(data):\n    # TODO: Implement solution\n    return data\n\n# Test execution\nprint(solution([1, 2, 3]))"
+    }}
+    """
+    res = call_gemini_api(prompt)
+    if res and 'instructions' in res and 'starter_code' in res:
+        session.coding_challenge_title = res.get('title', 'Coding Challenge')
+        session.coding_challenge_desc = res.get('instructions', '')
+        session.coding_challenge_starter_code = res.get('starter_code', '')
+        session.save()
+        return session.coding_challenge_desc, session.coding_challenge_starter_code
+    
+    fallback_desc = f"Complete the Python data processing function for {session.job.title}."
+    fallback_code = f"# Python Live Playground\ndef process_data(records):\n    # TODO: Implement optimization\n    return records\n\nprint(process_data(['data_1', 'data_2']))"
+    session.coding_challenge_desc = fallback_desc
+    session.coding_challenge_starter_code = fallback_code
+    session.save()
+    return fallback_desc, fallback_code
 
-    # Fallback to static context-aware templates
-    job_title = session.job.title
-    job_title_lower = job_title.lower()
-    skills = session.candidate.skills or ["software development"]
-    name = session.candidate.name
+# Dynamic question generator driven 100% by AI API calls
+def get_fallback_question(stage, session, question_index):
+    if stage == 'tech' and question_index == 0:
+        ensure_dynamic_coding_challenge(session)
+        
+    prompt = f"""
+    You are the {stage.upper()} interviewer agent in a professional multi-agent interview panel.
+    Candidate Name: {session.candidate.name}
+    Selected Job Role: {session.job.title}
+    Job Requirements: {session.job.requirements}
+    Job Description: {session.job.description}
+    Candidate Resume Score: {session.candidate.resume_score}/100
+    Candidate Resume Summary: {session.candidate.resume_summary}
+    Candidate Full Resume: {session.candidate.resume_text}
     
-    projects, experiences = extract_context_from_resume(session.candidate.resume_text)
-    primary_project = projects[0]
-    primary_exp = experiences[0]
+    Generate a unique, highly personalized interview question for this candidate at stage '{stage}' (question index: {question_index}).
     
-    # Calculate a stable variant index based on session.id so subsequent sessions vary
-    variant_index = (session.id or 0) % 3
-    
+    Guidelines:
+    - If stage is 'hr':
+      - Greet the candidate professionally as Sophia Davis (HR Agent).
+      - If index is 0, ask an opening question requesting introduction and interest in the job, referencing a specific project or experience from their resume.
+      - If index is 1, ask a follow-up question focusing on their core career goal, work style, or strength based on their resume.
+    - If stage is 'tech':
+      - If index is 0:
+        You are Dr. Ethan Vance, the Technical Agent. Introduce the technical round and explicitly tell the candidate to solve the practical coding challenge loaded in the Live Python Code Playground on the right side of their screen: "{session.coding_challenge_desc}".
+      - If index is 1:
+        The coding challenge portion is finished. Ask a deep dive conceptual/architectural question tailored to their resume projects.
+    - If stage is 'behavioral':
+      - If index is 0, ask about a team challenge, conflict, or milestone they handled in a project listed on their resume.
+      - If index is 1, ask about managing delays, learning from a project failure, or dealing with shifting requirements in their past roles.
+      
+    You must return a JSON object:
+    {{
+        "question": "Your personalized question text here"
+    }}
+    """
+    result = call_gemini_api(prompt)
+    if result and 'question' in result:
+        return result['question']
+        
     if stage == 'hr':
-        if question_index == 0:
-            hr_q0 = [
-                f"Welcome to the interview, {name}! I am Sophia, the HR Agent. Let's start: Please introduce yourself and share what interests you about the '{job_title}' role, especially in relation to your work on '{primary_project}'.",
-                f"Hello, {name}! Nice to meet you. I am Sophia from HR. Could you walk me through your career journey, what drives your passion for the '{job_title}' role, and how your project '{primary_project}' helped you grow?",
-                f"Hi {name}! Welcome to our panel evaluation. I am Sophia, the HR Agent. To begin our session, please tell me about yourself and why you applied to the '{job_title}' position. How does your experience with '{primary_project}' align with this role?"
-            ]
-            return hr_q0[variant_index]
-        else:
-            hr_q1 = [
-                f"Thank you. Looking at your technical background, you list experience with '{primary_exp}'. What do you consider your greatest professional strength from that role, and how do you handle tight deadlines?",
-                f"Thanks for sharing. Looking at your background in '{primary_exp}', what was the most valuable lesson you learned there, and how do you prioritize tasks when managing multiple deadlines?",
-                f"Appreciate that. In your previous role in '{primary_exp}', what did you find to be the most challenging aspect, and how did you manage your work-life balance or stress under pressure?"
-            ]
-            return hr_q1[variant_index]
-            
+        return f"Welcome {session.candidate.name}! I am Sophia Davis from HR. Could you introduce yourself and tell me what interests you about the '{session.job.title}' role based on your experience listed in your resume?"
     elif stage == 'tech':
-        if question_index == 0:
-            if "frontend" in job_title_lower or "react" in job_title_lower:
-                challenge_type = "frontend simulator"
-            elif "devops" in job_title_lower or "infrastructure" in job_title_lower or "cloud" in job_title_lower:
-                challenge_type = "infrastructure allocation/log-parsing"
-            else:
-                challenge_type = "backend algorithm optimization/data-structure"
-            
-            return f"Hello, {name}! I am Dr. Ethan Vance, the Technical Agent. For this first part of the technical round, I have loaded a {challenge_type} coding challenge in the Live Python Code Playground on the right. Please review the task instructions, write your implementation, and click '⚡ Run Code' to verify. When you are ready, click 'Use as Answer' to paste your output and submit to proceed."
-        else:
-            if "frontend" in job_title_lower or "react" in job_title_lower:
-                tech_fe_q1 = [
-                    f"Great work on the coding task. Now, from your experience in '{primary_exp}': Imagine a dashboard encounters heavy rendering lag. How would you diagnose component bottlenecks and optimize React performance?",
-                    f"Good job. Drawing from your experience in '{primary_exp}', what is your strategy for optimizing CSS-in-JS, loading heavy script bundles lazily, and preventing component memory leaks?",
-                    f"Excellent. In your role in '{primary_exp}', how would you approach end-to-end performance testing of UI views, and what are the best practices you implement for accessibility (a11y)?"
-                ]
-                return tech_fe_q1[variant_index]
-            elif "devops" in job_title_lower or "infrastructure" in job_title_lower or "cloud" in job_title_lower:
-                tech_do_q1 = [
-                    f"Good work. Drawing from your experience in '{primary_exp}': if a container keeps crashing with OOMKilled status, what troubleshooting steps and configuration fixes would you deploy?",
-                    f"Great. Drawing from your role in '{primary_exp}', how did you handle secrets management, prevent configuration drift, and ensure zero-downtime rollbacks during a failed deployment?",
-                    f"Excellent. For your experience in '{primary_exp}', if you notice a sudden spike in cloud database connection timeouts under high load, how would you diagnose and mitigate the root cause?"
-                ]
-                return tech_do_q1[variant_index]
-            else:
-                # Default Backend
-                tech_be_q1 = [
-                    f"Well done on the coding task. Now, in your experience with '{primary_exp}': what database bottlenecks did you encounter, and how did you resolve them using indexing or query optimization?",
-                    f"Good effort on the coding task. For your experience with '{primary_exp}', how would you handle microservices synchronization, caching strategies (like Redis), and avoiding race conditions?",
-                    f"Great coding work. Reflecting on your experience in '{primary_exp}', how did you approach writing unit/integration tests, and what was your strategy for API rate limiting or query optimization?"
-                ]
-                return tech_be_q1[variant_index]
-                
-    elif stage == 'behavioral':
-        if question_index == 0:
-            beh_q0 = [
-                f"Hi! I am Marcus Carter, the Behavioral Agent. While working on '{primary_project}', did you face any technical disagreements or scope challenges with teammates? How did you resolve them?",
-                f"Hello, {name}. I am Marcus Carter. Regarding your work on '{primary_project}', describe a situation where you had to adapt to a sudden change in requirements or project goals. How did you react?",
-                f"Welcome, {name}. I am Marcus Carter, the Behavioral Agent. Looking at '{primary_project}', tell me about a time you had to mentor a colleague or work with a difficult stakeholder. How did you ensure success?"
-            ]
-            return beh_q0[variant_index]
-        else:
-            beh_q1 = [
-                f"Thank you. Reflecting on your role in '{primary_exp}', tell me about a time a project faced a major delay or failure. What did you do to manage it, and what did you learn?",
-                f"Appreciate your answer. In your role in '{primary_exp}', how did you handle a situation where you were assigned a task you didn't have prior experience with? What was the outcome?",
-                f"Thank you. From your experience in '{primary_exp}', how do you handle constructive criticism or feedback from code reviews, and can you share an example of when feedback improved your code?"
-            ]
-            return beh_q1[variant_index]
-            
-    return "Could you elaborate on that?"
+        return f"Hello {session.candidate.name}! I am Dr. Ethan Vance, the Technical Agent. Please review the live coding challenge loaded in the Code Playground on the right: {session.coding_challenge_desc or 'Implement the python solution'}. Run your code to verify it, then click 'Use as Answer' to submit."
+    else:
+        return f"Hello {session.candidate.name}, I am Marcus Carter, the Behavioral Agent. Looking at your resume experience, can you describe a challenging project milestone you managed and how you handled unexpected obstacles?"
 
 # Seed standard job descriptions
 def seed_jobs_if_needed():
@@ -690,13 +652,18 @@ def interview_action(request, session_id):
             # Let Gemini construct a smart follow up
             prompt = f"""
             You are the {stage.upper()} interviewer. 
+            Candidate Name: {session.candidate.name}
+            Selected Job Role: {session.job.title}
+            Job Requirements: {session.job.requirements}
             Job Description: {session.job.description}
-            Candidate Resume: {session.candidate.resume_text}
+            Candidate Resume Score: {session.candidate.resume_score}/100
+            Candidate Resume Summary: {session.candidate.resume_summary}
+            Full Resume Text: {session.candidate.resume_text}
             Interview History so far in this round: {json.dumps(transcript)}
             {tech_note}
             
             Based on the candidate's last answer, generate a single logical, professional, and challenging follow-up question.
-            CRITICAL: You MUST explicitly reference the candidate's specific past experience, projects, or achievements mentioned in their resume summary where relevant, rather than asking generic questions.
+            CRITICAL: You MUST explicitly reference the candidate's specific past experience, projects, resume score ({session.candidate.resume_score}/100), or achievements mentioned in their resume summary where relevant, rather than asking generic questions.
             
             Return a JSON object:
             {{
@@ -721,14 +688,30 @@ def interview_action(request, session_id):
         if has_api:
             prompt = f"""
             Evaluate the following interview transcript for the {stage.upper()} round.
-            Job Description: {session.job.description}
-            Transcript: {json.dumps(transcript)}
             
-            Grade the candidate out of 100 and write a detailed evaluation.
+            JOB CONTEXT:
+            - Selected Job Role: {session.job.title}
+            - Job Requirements: {session.job.requirements}
+            - Job Description: {session.job.description}
+            
+            CANDIDATE CONTEXT:
+            - Candidate Name: {session.candidate.name}
+            - Resume Score: {session.candidate.resume_score}/100
+            - Resume Summary: {session.candidate.resume_summary}
+            - Full Resume Text: {session.candidate.resume_text}
+            
+            INTERVIEW TRANSCRIPT ({stage.upper()} Round):
+            {json.dumps(transcript)}
+            
+            SCORING RULES & CRITERIA:
+            1. Evaluate candidate answers against their claimed resume background, resume score ({session.candidate.resume_score}/100), and job requirements for '{session.job.title}'.
+            2. CRITICAL: If the candidate gave low-effort, non-responsive, unhelpful, off-topic, or refusal-to-answer responses (such as "i dont know", "who are you", "nooo", "idk", "pass", or short single-word answers), you MUST assign a VERY LOW score between 0.0 and 20.0 and explicitly explain this failure in the feedback.
+            3. If the candidate provided clear, relevant, and technically sound answers demonstrating alignment with their resume and job requirements, score them fairly between 65.0 and 100.0 based on answer quality.
+            
             Return a JSON object:
             {{
-                "score": 85.5,
-                "feedback": "Write observations of strengths and weaknesses."
+                "score": 0.0,
+                "feedback": "Detailed observations of candidate answers, strengths, weaknesses, and alignment with resume/job."
             }}
             """
             result = call_gemini_api(prompt)
@@ -738,6 +721,13 @@ def interview_action(request, session_id):
             else:
                 stage_score = 75.0
                 stage_feedback = "Completed round."
+
+            # Guardrail: Enforce score penalty for obvious non-answers
+            candidate_text = " ".join([m['text'].lower().strip() for m in transcript if m['sender'] == 'Candidate'])
+            non_answers = ["i dont know", "i don't know", "idk", "who are you", "nooo", "noo", "pass", "dont know"]
+            if any(na in candidate_text for na in non_answers) and len(candidate_text.split()) < 15:
+                stage_score = min(stage_score, 15.0)
+                stage_feedback += "\n\n⚠️ Evaluation Note: Score penalized due to non-responsive or minimal candidate answers."
         else:
             # Heuristic grader
             combined_answers = " ".join([m['text'] for m in transcript if m['sender'] == 'Candidate'])
