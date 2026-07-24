@@ -462,131 +462,138 @@
         document.getElementById('tab-btn-' + tabName).classList.add('active');
     }
 
-    // 2. Monaco Diff Editor Initialization
+    // 1. Competency Radar Chart Config
+    document.addEventListener('DOMContentLoaded', function() {
+        const chartCanvas = document.getElementById('competencyChart');
+        if (chartCanvas) {
+            const ctx = chartCanvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Resume Score', 'HR Round', 'Tech Round', 'Behavioral'],
+                    datasets: [{
+                        label: '{{ candidate.name }} (Current)',
+                        data: [
+                            {{ candidate.resume_score|default:75 }},
+                            {{ session.hr_score|default:70 }},
+                            {{ session.tech_score|default:70 }},
+                            {{ session.behavioral_score|default:70 }}
+                        ],
+                        backgroundColor: 'rgba(0, 242, 254, 0.25)',
+                        borderColor: '#00f2fe',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#00f2fe'
+                    }, {
+                        label: 'Benchmark Average',
+                        data: [
+                            {{ benchmarks.resume|default:75 }},
+                            {{ benchmarks.hr|default:70 }},
+                            {{ benchmarks.tech|default:70 }},
+                            {{ benchmarks.behavioral|default:70 }}
+                        ],
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        borderWidth: 1.5,
+                        borderDash: [5, 5],
+                        pointBackgroundColor: 'rgba(255, 255, 255, 0.5)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.08)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                            pointLabels: { color: '#94a3b8', font: { family: 'Outfit', size: 10 } },
+                            ticks: { display: false, stepSize: 20 },
+                            min: 0,
+                            max: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#f1f5f9', font: { family: 'Outfit', size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    // 2. Monaco Diff Editor Initialization (Guarded)
     {% if session.technical_code %}
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs' } });
-    require(['vs/editor/editor.main'], function() {
-        let originalCode = [
-            '# Python Technical Playground',
-            '# Optimize this slow lookup algorithm:',
-            'def optimize_data_lookup(records):',
-            '    # Convert input list to a set to do O(1) searches',
-            '    search_set = set(records)',
-            '    print(f"Index mapped {len(search_set)} elements.")',
-            '    return search_set',
-            '',
-            '# Test execution',
-            'sample_data = ["patient_1", "patient_2", "patient_1", "patient_3"]',
-            'print(optimize_data_lookup(sample_data))'
-        ].join('\n');
-
-        const jobTitle = "{{ session.job.title|escapejs }}".toLowerCase();
-        if (jobTitle.includes("frontend") || jobTitle.includes("react")) {
-            originalCode = [
-                '# Python Technical Playground - Frontend Engine Simulator',
-                '# Calculate optimal page rendering chunk divisions:',
-                'def calculate_rendering_batches(items, page_size=10):',
-                '    batches = [items[i:i + page_size] for i in range(0, len(items), page_size)]',
-                '    print(f"Divided {len(items)} components into {len(batches)} optimal paint batches.")',
-                '    return batches',
+    if (typeof require !== 'undefined' && document.getElementById('monaco-diff-container')) {
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.39.0/min/vs' } });
+        require(['vs/editor/editor.main'], function() {
+            let originalCode = [
+                '# Python Technical Playground',
+                '# Optimize this slow lookup algorithm:',
+                'def optimize_data_lookup(records):',
+                '    # Convert input list to a set to do O(1) searches',
+                '    search_set = set(records)',
+                '    print(f"Index mapped {len(search_set)} elements.")',
+                '    return search_set',
                 '',
-                '# Simulate rendering execution',
-                'items_list = [f"render_item_{i}" for i in range(75)]',
-                'print(calculate_rendering_batches(items_list))'
+                '# Test execution',
+                'sample_data = ["patient_1", "patient_2", "patient_1", "patient_3"]',
+                'print(optimize_data_lookup(sample_data))'
             ].join('\n');
-        } else if (jobTitle.includes("devops") || jobTitle.includes("infrastructure") || jobTitle.includes("cloud")) {
-            originalCode = [
-                '# Python Technical Playground - Infrastructure Allocation Optimizer',
-                '# Optimize placement of container weights into VM host capacities:',
-                'def optimize_container_hosts(containers_ram, host_capacity_ram=1024):',
-                '    allocated_hosts = []',
-                '    for ram in sorted(containers_ram, reverse=True):',
-                '        placed = False',
-                '        for i, host in enumerate(allocated_hosts):',
-                '            if sum(host) + ram <= host_capacity_ram:',
-                '                allocated_hosts[i].append(ram)',
-                '                placed = True',
-                '                break',
-                '        if not placed:',
-                '            allocated_hosts.append([ram])',
-                '    print(f"Scheduled {len(containers_ram)} instances onto {len(allocated_hosts)} nodes.")',
-                '    return len(allocated_hosts)',
-                '',
-                '# Execute DevOps scheduling simulation',
-                'containers = [128, 256, 512, 128, 64, 512, 256, 128]',
-                'print("Optimal cloud nodes count:", optimize_container_hosts(containers))'
-            ].join('\n');
-        }
 
-        const modifiedCode = `{{ session.technical_code|escapejs }}`;
-        
-        const diffEditor = monaco.editor.createDiffEditor(document.getElementById('monaco-diff-container'), {
-            readOnly: true,
-            theme: 'vs-dark',
-            automaticLayout: true,
-            minimap: { enabled: false }
-        });
-
-        diffEditor.setModel({
-            original: monaco.editor.createModel(originalCode, 'python'),
-            modified: monaco.editor.createModel(modifiedCode, 'python')
-        });
-    });
-    {% endif %}
-
-    // 3. Competency Radar Chart Config
-    const ctx = document.getElementById('competencyChart').getContext('2d');
-    const competencyChart = new Chart(ctx, {
-        type: 'radar',
-        data: {
-            labels: ['Resume Score', 'HR Round', 'Tech Round', 'Behavioral'],
-            datasets: [{
-                label: '{{ candidate.name }} (Current)',
-                data: [
-                    {{ candidate.resume_score }},
-                    {{ session.hr_score }},
-                    {{ session.tech_score }},
-                    {{ session.behavioral_score }}
-                ],
-                backgroundColor: 'rgba(0, 242, 254, 0.25)',
-                borderColor: '#00f2fe',
-                borderWidth: 2,
-                pointBackgroundColor: '#00f2fe'
-            }, {
-                label: 'Benchmark Average',
-                data: [
-                    {{ benchmarks.resume }},
-                    {{ benchmarks.hr }},
-                    {{ benchmarks.tech }},
-                    {{ benchmarks.behavioral }}
-                ],
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                borderColor: 'rgba(255, 255, 255, 0.3)',
-                borderWidth: 1.5,
-                borderDash: [5, 5],
-                pointBackgroundColor: 'rgba(255, 255, 255, 0.5)'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                r: {
-                    angleLines: { color: 'rgba(255, 255, 255, 0.08)' },
-                    grid: { color: 'rgba(255, 255, 255, 0.08)' },
-                    pointLabels: { color: '#94a3b8', font: { family: 'Outfit', size: 10 } },
-                    ticks: { display: false, stepSize: 20 },
-                    min: 0,
-                    max: 100
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: { color: '#f1f5f9', font: { family: 'Outfit', size: 11 } }
-                }
+            const jobTitle = "{{ session.job.title|escapejs }}".toLowerCase();
+            if (jobTitle.includes("frontend") || jobTitle.includes("react")) {
+                originalCode = [
+                    '# Python Technical Playground - Frontend Engine Simulator',
+                    '# Calculate optimal page rendering chunk divisions:',
+                    'def calculate_rendering_batches(items, page_size=10):',
+                    '    batches = [items[i:i + page_size] for i in range(0, len(items), page_size)]',
+                    '    print(f"Divided {len(items)} components into {len(batches)} optimal paint batches.")',
+                    '    return batches',
+                    '',
+                    '# Simulate rendering execution',
+                    'items_list = [f"render_item_{i}" for i in range(75)]',
+                    'print(calculate_rendering_batches(items_list))'
+                ].join('\n');
+            } else if (jobTitle.includes("devops") || jobTitle.includes("infrastructure") || jobTitle.includes("cloud")) {
+                originalCode = [
+                    '# Python Technical Playground - Infrastructure Allocation Optimizer',
+                    '# Optimize placement of container weights into VM host capacities:',
+                    'def optimize_container_hosts(containers_ram, host_capacity_ram=1024):',
+                    '    allocated_hosts = []',
+                    '    for ram in sorted(containers_ram, reverse=True):',
+                    '        placed = False',
+                    '        for i, host in enumerate(allocated_hosts):',
+                    '            if sum(host) + ram <= host_capacity_ram:',
+                    '                allocated_hosts[i].append(ram)',
+                    '                placed = True',
+                    '                break',
+                    '        if not placed:',
+                    '            allocated_hosts.append([ram])',
+                    '    print(f"Scheduled {len(containers_ram)} instances onto {len(allocated_hosts)} nodes.")',
+                    '    return len(allocated_hosts)',
+                    '',
+                    '# Execute DevOps scheduling simulation',
+                    'containers = [128, 256, 512, 128, 64, 512, 256, 128]',
+                    'print("Optimal cloud nodes count:", optimize_container_hosts(containers))'
+                ].join('\n');
             }
-        }
-    });
+
+            const modifiedCode = `{{ session.technical_code|escapejs }}`;
+            
+            const diffEditor = monaco.editor.createDiffEditor(document.getElementById('monaco-diff-container'), {
+                readOnly: true,
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false }
+            });
+
+            diffEditor.setModel({
+                original: monaco.editor.createModel(originalCode, 'python'),
+                modified: monaco.editor.createModel(modifiedCode, 'python')
+            });
+        });
+    }
+    {% endif %}
 </script>
 
 <!-- CSS styling for active tabs and print layouts -->
