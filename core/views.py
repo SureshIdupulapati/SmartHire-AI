@@ -476,17 +476,18 @@ def parse_resume(request):
             "resume_summary": f"Self-reported developer with {exp_years} years of experience. Demonstrated skills include {', '.join(skills[:3])}."
         }
 
-    # Save or Update Candidate
+    # Save or Update Candidate (always prioritize form input name)
+    candidate_name = name if name else (analysis.get('name') if isinstance(analysis, dict) and analysis.get('name') else 'Candidate')
     candidate, created = Candidate.objects.update_or_create(
-        email=analysis.get('email', email),
+        email=email if email else analysis.get('email'),
         defaults={
-            'name': analysis.get('name', name),
+            'name': candidate_name,
             'resume_text': resume_text,
-            'skills': analysis.get('skills', []),
-            'missing_skills': analysis.get('missing_skills', []),
-            'experience_years': analysis.get('experience_years', 2),
-            'resume_score': analysis.get('resume_score', 75),
-            'resume_summary': analysis.get('resume_summary', '')
+            'skills': analysis.get('skills', []) if isinstance(analysis, dict) else [],
+            'missing_skills': analysis.get('missing_skills', []) if isinstance(analysis, dict) else [],
+            'experience_years': analysis.get('experience_years', 2) if isinstance(analysis, dict) else 2,
+            'resume_score': analysis.get('resume_score', 75) if isinstance(analysis, dict) else 75,
+            'resume_summary': analysis.get('resume_summary', '') if isinstance(analysis, dict) else ''
         }
     )
 
